@@ -369,39 +369,110 @@ function parseReceipt(text){
  const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
  const shop=guessShop(lines),date=guessDate(text);
  let subtotal=null,tax=null,total=null,discount=null,pointsUsed=null,paymentAmount=null;
+
+ // Bill-level values: prioritise explicit totals so card/payment amounts never
+ // become the receipt total when an explicit Total (MVR) is present.
  for(const line of lines){
-  const low=line.toLowerCase(), nums=moneyNumbers(line);if(!nums.length)continue;
-  if(/sub\s*total/.test(low))subtotal=nums[nums.length-1];
-  else if(/\b(gst|tax|vat)\b/.test(low))tax=nums[nums.length-1];
-  else if(/\b(discount|disc)\b/.test(low))discount=nums[nums.length-1];
-  else if(/\b(points?|loyalty|reward|redeem|redeemed|redemption)\b/.test(low)){
-    pointsUsed=nums[nums.length-1];
+  const low=line.toLowerCase(), nums=moneyNumbers(line);
+  if(!nums.length)continue;
+  if(/sub\s*total/.test(low)) subtotal=nums[nums.length-1];
+  else if(/\b(gst|tax|vat)\b/.test(low) && !/total\s*gst/.test(low)) tax=nums[nums.length-1];
+  else if(/\b(discount|disc)\b/.test(low)) discount=nums[nums.length-1];
+  else if(/\bpoints?\s*(used|redeemed)?|loyalty\s*(used|redeemed)?|reward\s*(used|redeemed)?|redeem(ed|ption)?\b/.test(low)){
+    if(/\b(used|redeemed|redemption|redeem)\b/.test(low)) pointsUsed=nums[nums.length-1];
   }
-  else if(/\btotal\s*(?:\(\s*mvr\s*\)|mvr)?\b/i.test(low)&&!/subtotal/.test(low)){
+  else if(/\btotal\s*(?:\(\s*mvr\s*\)|mvr)?\b/i.test(low) && !/subtotal|total\s*gst|total\s*tax/.test(low)){
     total=nums[nums.length-1];
   }
-  else if(/\b(card|paid|payment|cash|settled)\b/.test(low)&&!/outstanding|balance/.test(low)){
+  else if(/\b(received|received\s*amount|paid|payment|cash|settled)\b/.test(low) && !/outstanding|balance/.test(low)){
     paymentAmount=nums[nums.length-1];
   }
  }
  if(total==null && paymentAmount!=null) total=paymentAmount;
  if(total==null && subtotal!=null) total=Math.max(0,subtotal+(tax||0)-(discount||0)-(pointsUsed||0));
- const noise=/^(subtotal|sub\s*total|total|gst|tax|vat|cash|change|balance|amount|payment|paid|card|card\s*customer|credit\s*card|debit\s*card|visa|mastercard|master|amex|tender|discount|disc|points?|loyalty|reward|redeem|redeemed|redemption|rounding|thank|thank\s*you|date|time|invoice|bill|receipt|qty|quantity|description|customer|customer\s*tn|tin|print\s*by|powered\s*by)$/i;
+
+ const noise=/^(subtotal|sub\s*total|total|gst|tax|vat|total\s*gst|cash|change|balance|amount|payment|paid|received|received\s*amount|card|card\s*customer|credit\s*card|debit\s*card|visa|mastercard|master|amex|tender|discount|disc|points?|loyalty|reward|redeem|redeemed|redemption|rounding|thank|thank\s*you|date|time|invoice|bill|receipt|qty|quantity|description|customer|customer\s*tn|tin|print\s*by|powered\s*by|outstanding|settled)$/i;
+
  const found=[];
+ const isNumericRow=(line)=>{
+   const nums=moneyNumbers(line);
+   // Typical POS table row: Qty, A.Rate, S.Rate, Amount, GST.
+   // Allow 4-number rows for receipts that omit GST.
+   return nums.length>=4 && nums.length<=6 &&
+          /^\s*(?:\d+(?:[.,]\d+)?\s+){3,}\d+(?:[.,]\d+)?(?:\s+\d+(?:[.,]\d+)?)?\s*$/.test(line);
+ };
+ const cleanName=(s)=>{
+   if(!s)return "";
+   return s.replace(/^\s*(?:\d+|[Il])\s*$/,"")
+           .replace(/^[\s|_\-–—:]+|[\s|_\-–—:]+$/g,"")
+           .replace(/\s+/g," ").trim();
+ };
+
+ // Receipt-table parser. For the common POS layout used by this bill,
+ // the numeric row comes immediately before the item name:
+ //   1.00 72.00 72.00 72.00 5.33
+ //   RENUKA COCONUT MILK POWDER 300G
+ // The second number is the unit/A.Rate, while the fourth is the line amount
+ // and the fifth is GST. This prevents GST/amount values from becoming prices.
  for(let i=0;i<lines.length;i++){
-  const line=lines[i];
-  if(/subtotal|sub\s*total|gst|tax|vat|total|cash|change|balance|payment|paid|card|visa|mastercard|master|amex|debit|credit|tender|discount|disc|points?|loyalty|reward|redeem|redeemed|redemption|rounding|thank|customer|tin|print\s*by|powered\s*by/i.test(line))continue;
-  const nums=moneyNumbers(line);if(!nums.length)continue;
-  const m=line.match(/(\d{1,5}(?:[.,]\d{2}))/);
-  if(!m)continue;
-  let name=line.slice(0,m.index).replace(/^\s*\d+\s*[xX×]?\s*/,"").replace(/[|_\-–—:]+$/,"").trim();
-  let price=nums[nums.length-1];
-  const qtyMatch=line.match(/^\s*(\d+(?:\.\d+)?)\s*[xX×]\s*/);
-  if(qtyMatch&&nums.length>=2) price=nums[nums.length-1];
-  if(!name&&i>0){const p=lines[i-1];if(!moneyNumbers(p).length&&!noise.test(p))name=p}
-  if(name&&name.length>1&&price>0&&price<100000&&!noise.test(name)&&!/(card\s*customer|card|paid|visa|mastercard|master|amex|credit|debit|cash|payment|tender|discount|disc|points?|loyalty|reward|redeem|redeemed|redemption|powered\s*by|print\s*by)/i.test(name))found.push({item:name,shop,date,price,added:alreadyExists({item:name,shop,date,price})});
+   const line=lines[i];
+   if(!isNumericRow(line)) continue;
+   const nums=moneyNumbers(line);
+   const qty=nums[0], unitPrice=nums[1], amount=nums[3];
+   let name="";
+   // Usually the product name is the next OCR line. Skip a standalone serial
+   // number if OCR has split it onto its own line.
+   let j=i+1;
+   while(j<lines.length && j<=i+3){
+     const candidate=cleanName(lines[j]);
+     if(!candidate){j++;continue;}
+     if(/^\d+(?:[.,]\d+)?$/.test(candidate)){j++;continue;}
+     if(isNumericRow(lines[j]))break;
+     if(noise.test(candidate) ||
+        /^(sub\s*total|total|gst|tax|discount|card|paid|cash|payment|received|balance|outstanding|settled)/i.test(candidate)) break;
+     if(/[A-Za-z]/.test(candidate)){name=candidate;break;}
+     j++;
+   }
+
+   if(name && unitPrice>0 && unitPrice<100000 && !noise.test(name) &&
+      !/(card\s*customer|card|paid|visa|mastercard|master|amex|credit|debit|cash|payment|tender|discount|disc|points?|loyalty|reward|redeem|redeemed|redemption|powered\s*by|print\s*by)/i.test(name)){
+     found.push({
+       item:name,
+       shop,
+       date,
+       price:Number(unitPrice),
+       qty:Number(qty),
+       lineTotal:Number(amount),
+       gst:nums.length>=5?Number(nums[4]):null,
+       added:alreadyExists({item:name,shop,date,price:Number(unitPrice)})
+     });
+   }
  }
- return {shop,date,subtotal,tax,discount,pointsUsed,total,items:dedupe(found)};
+
+ // Fallback for receipts where OCR keeps item name and numeric data on the same line.
+ // It is deliberately stricter than the old parser so random OCR numbers are not
+ // treated as prices.
+ if(!found.length){
+   for(let i=0;i<lines.length;i++){
+     const line=lines[i];
+     if(noise.test(line) || /subtotal|sub\s*total|gst|tax|total|cash|change|balance|payment|paid|card|visa|mastercard|master|amex|debit|credit|tender|discount|points?|loyalty|reward|redeem|redeemed|redemption|customer|tin|print\s*by|powered\s*by/i.test(line)) continue;
+     const nums=moneyNumbers(line);
+     if(nums.length<2)continue;
+     const m=line.match(/(\d{1,5}(?:[.,]\d{2}))/);
+     if(!m)continue;
+     let name=line.slice(0,m.index).replace(/^\s*\d+\s*[xX×]?\s*/,"").trim();
+     if(!name && i>0 && !moneyNumbers(lines[i-1]).length) name=cleanName(lines[i-1]);
+     const price=nums.length>=4?nums[1]:nums[0];
+     if(name.length>1 && price>0 && price<100000 && !noise.test(name)){
+       found.push({item:cleanName(name),shop,date,price:Number(price),added:alreadyExists({item:cleanName(name),shop,date,price:Number(price)})});
+     }
+   }
+ }
+
+ return {
+   shop,date,subtotal,tax,discount,pointsUsed,total,
+   items:dedupe(found)
+ };
 }
 function dedupe(a){const seen=new Set();return a.filter(x=>{const k=duplicateKey(x);if(seen.has(k))return false;seen.add(k);return true})}
 

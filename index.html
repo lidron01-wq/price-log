@@ -42,7 +42,7 @@ input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px
 <div class="btnrow"><button class="ghost" id="scanBtn">📷 Scan a bill</button><button class="ghost" id="uploadBtn">🖼 Upload bill</button></div>
 <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden>
 <input id="uploadInput" type="file" accept="image/*" hidden>
-<div class="status" id="status"></div><img id="preview" class="preview" alt="Receipt preview">
+<div class="status" id="status">After scanning, you can amend the shop name before adding items.</div><img id="preview" class="preview" alt="Receipt preview">
 <div id="billInfo"></div><div id="candidates" class="candidates"></div>
 </div>
 
@@ -135,7 +135,12 @@ $("uploadInput").onchange=e=>handleFile(e.target.files[0]);
 
 function moneyNumbers(s){return [...s.matchAll(/(?:MVR\s*)?(\d{1,5}(?:[.,]\d{2}))/gi)].map(m=>parseFloat(m[1].replace(",",".")))}
 function guessDate(text){const m=text.match(/\b(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})\b/);if(!m)return today();let y=m[3];if(y.length===2)y="20"+y;return `${y}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`}
-function guessShop(lines){const bad=/^(date|time|invoice|receipt|subtotal|total|cash|change|tax|gst|qty|item|description|amount)/i;return lines.find(x=>x.length>3&&!bad.test(x)&&/[A-Za-z]/.test(x))||$("shop").value.trim()||"Unknown shop"}
+function guessShop(lines){
+ const bad=/^(date|time|invoice|bill|receipt|subtotal|total|cash|change|tax|gst|qty|item|description|amount|register|cashier|type|temp|tin|phone|email|customer|print|powered)/i;
+ const header=lines.slice(0,8).filter(x=>x.length>4&&!bad.test(x)&&/[A-Za-z]/.test(x));
+ const prominent=header.find(x=>/[A-Z]{3,}/.test(x)&&!/@/.test(x)&&!/TIN|PHONE|EMAIL/i.test(x));
+ return prominent||header[0]||$("shop").value.trim()||"Unknown shop";
+}
 
 function duplicateKey(c){
  return `${(c.shop||"").toLowerCase()}|${c.date||""}|${(c.item||"").toLowerCase().replace(/\W/g,"")}|${Number(c.price).toFixed(2)}`
@@ -207,13 +212,26 @@ async function handleFile(file){
   const r=await T.recognize(processed,"eng",{logger:m=>{if(m.status==="recognizing text")$("status").textContent=`Reading receipt… ${Math.round((m.progress||0)*100)}%`}});
   currentBill=parseReceipt(r.data.text||"");
   scanEntries=currentBill.items;
-  $("billInfo").innerHTML=`<div class="billbox"><div class="billrow"><span>Shop</span><b>${esc(currentBill.shop)}</b></div><div class="billrow"><span>Date</span><b>${esc(currentBill.date)}</b></div>${currentBill.subtotal!=null?`<div class="billrow"><span>Subtotal</span><b>MVR ${currentBill.subtotal.toFixed(2)}</b></div>`:""}${currentBill.tax!=null?`<div class="billrow"><span>GST / Tax</span><b>MVR ${currentBill.tax.toFixed(2)}</b></div>`:""}
+  $("billInfo").innerHTML=`<div class="billbox">
+  <div class="field" style="margin-bottom:10px">
+    <label>Shop name — amend if needed</label>
+    <input id="billShopEdit" value="${esc(currentBill.shop)}" placeholder="Enter shop name">
+  </div>
+  <div class="billrow"><span>Date</span><b>${esc(currentBill.date)}</b></div>${currentBill.subtotal!=null?`<div class="billrow"><span>Subtotal</span><b>MVR ${currentBill.subtotal.toFixed(2)}</b></div>`:""}${currentBill.tax!=null?`<div class="billrow"><span>GST / Tax</span><b>MVR ${currentBill.tax.toFixed(2)}</b></div>`:""}
   ${currentBill.discount!=null?`<div class="billrow"><span>Discount</span><b>− MVR ${currentBill.discount.toFixed(2)}</b></div>`:""}
   ${currentBill.pointsUsed!=null?`<div class="billrow"><span>Customer points used</span><b>MVR ${currentBill.pointsUsed.toFixed(2)}</b></div>`:""}
   ${currentBill.total!=null?`<div class="billrow total"><span>Total paid</span><b>MVR ${currentBill.total.toFixed(2)}</b></div>`:""}</div>`;
   const dup=scanEntries.length&&scanEntries.every(x=>x.added);
   $("status").textContent=dup?"Duplicate/previously scanned bill detected. No new items found.":`Read ${scanEntries.length} item(s). Review and add missing items.`;
   renderScan();
+  const shopEdit=$("billShopEdit");
+  if(shopEdit){
+    shopEdit.addEventListener("input",()=>{
+      currentBill.shop=shopEdit.value.trim();
+      scanEntries.forEach(x=>x.shop=currentBill.shop);
+      renderScan();
+    });
+  }
  }catch(e){console.error(e);$("status").textContent="Receipt could not be read. You can still use Add entry or try another photo."}
 }
 load();render();

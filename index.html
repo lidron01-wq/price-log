@@ -107,6 +107,39 @@ h2{ font-size:15px; font-family:-apple-system,sans-serif; font-weight:700;
 .cand-text{ flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .cand-price{ font-weight:700; margin-left:8px; }
 .cand button{ padding:6px 10px; font-size:12px; }
+
+.tabs{ display:flex; gap:6px; margin:24px 0 12px; border-bottom:1px solid var(--line); }
+.tab{
+  background:none; border:none; padding:8px 4px 10px; font-family:-apple-system,sans-serif;
+  font-size:15px; font-weight:700; color:var(--teal-dim); border-bottom:2px solid transparent;
+  border-radius:0; cursor:pointer; margin-right:14px;
+}
+.tab.active{ color:var(--ink); border-bottom-color:var(--coral); }
+
+.month-card{
+  display:flex; justify-content:space-between; align-items:baseline;
+  background:var(--card); border:1px solid var(--line); border-radius:10px;
+  padding:14px 16px; margin-bottom:10px; font-family:-apple-system,sans-serif;
+}
+.month-card.current{ border-color:var(--coral); }
+.month-card .label{ font-size:14px; font-weight:600; }
+.month-card .label .tag{ font-size:10px; font-weight:700; color:var(--coral); margin-left:6px; }
+.month-card .count{ font-size:12px; color:var(--teal-dim); display:block; margin-top:2px; }
+.month-card .amount{ font-size:18px; font-weight:700; }
+
+.stat-grid{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:16px; }
+.stat-card{
+  flex:1; min-width:140px; background:var(--card); border:1px solid var(--line); border-radius:12px;
+  padding:14px 16px; font-family:-apple-system,sans-serif;
+}
+.stat-card .num{ font-size:22px; font-weight:800; color:var(--teal); }
+.stat-card .lbl{ font-size:12px; color:var(--teal-dim); margin-top:2px; }
+.dash-section-title{ font-family:-apple-system,sans-serif; font-size:13px; font-weight:700; color:var(--teal-dim); margin:18px 2px 8px; }
+.chart-card{ background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 12px 6px; }
+.recent{ background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+.recent .row-item{ display:flex; justify-content:space-between; padding:10px 14px; font-family:-apple-system,sans-serif; font-size:13px; border-bottom:1px solid var(--line); }
+.recent .row-item:last-child{ border-bottom:none; }
+.recent .row-item .who{ color:var(--teal-dim); font-size:11px; }
 </style>
 </head>
 <body>
@@ -138,11 +171,25 @@ h2{ font-size:15px; font-family:-apple-system,sans-serif; font-weight:700;
     <div class="candidates" id="candidates"></div>
   </div>
 
-  <h2>Shops</h2>
-  <div id="shopList"></div>
+  <div class="tabs">
+    <button class="tab active" id="tabDash">Dashboard</button>
+    <button class="tab" id="tabItems">Items</button>
+    <button class="tab" id="tabShops">Shops</button>
+    <button class="tab" id="tabSpending">Spending</button>
+  </div>
 
-  <h2>Your items</h2>
-  <div id="list"></div>
+  <div id="panelDash">
+    <div id="dash"></div>
+  </div>
+  <div id="panelItems" style="display:none;">
+    <div id="list"></div>
+  </div>
+  <div id="panelShops" style="display:none;">
+    <div id="shopList"></div>
+  </div>
+  <div id="panelSpending" style="display:none;">
+    <div id="spendingList"></div>
+  </div>
 
 </main>
 
@@ -165,6 +212,98 @@ function render(){
   renderShops();
   renderItems();
   renderCategoryList();
+  renderSpending();
+  renderDashboard();
+}
+
+function renderDashboard(){
+  const box = $('#dash');
+  if(!entries.length){ box.innerHTML = '<div class="empty">No entries yet. Add one or scan a bill to see your dashboard.</div>'; return; }
+
+  const now = new Date();
+  const currentKey = now.toISOString().slice(0,7);
+  const months = {};
+  entries.forEach(e=>{
+    const key = (e.date||'').slice(0,7);
+    if(!key) return;
+    months[key] = (months[key]||0) + e.price;
+  });
+  const thisMonthTotal = months[currentKey] || 0;
+  const distinctItems = new Set(entries.map(e=>e.item.trim().toLowerCase())).size;
+
+  // best value shop = most times cheapest, tie-break by item count
+  const byItem = {};
+  entries.forEach(e=>{
+    const key = e.item.trim().toLowerCase();
+    (byItem[key]=byItem[key]||[]).push(e);
+  });
+  const shopWins = {};
+  Object.values(byItem).forEach(rows=>{
+    const min = Math.min(...rows.map(r=>r.price));
+    new Set(rows.filter(r=>r.price===min).map(r=>r.shop.trim())).forEach(s=> shopWins[s]=(shopWins[s]||0)+1);
+  });
+  const bestShop = Object.keys(shopWins).sort((a,b)=>shopWins[b]-shopWins[a])[0] || '—';
+
+  // last 6 months, oldest to newest, for the chart
+  const chartKeys = [];
+  for(let i=5;i>=0;i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    chartKeys.push(d.toISOString().slice(0,7));
+  }
+  const chartVals = chartKeys.map(k=>months[k]||0);
+  const max = Math.max(...chartVals, 1);
+  const barW = 40, gap = 14, chartH = 90, w = chartKeys.length*(barW+gap);
+  const bars = chartKeys.map((k,i)=>{
+    const h = Math.max(2, (chartVals[i]/max)*chartH);
+    const x = i*(barW+gap);
+    const label = new Date(+k.slice(0,4), +k.slice(5,7)-1, 1).toLocaleDateString('en-US',{month:'short'});
+    const isCur = k===currentKey;
+    return `<rect x="${x}" y="${chartH-h}" width="${barW}" height="${h}" rx="4" fill="${isCur?'var(--coral)':'var(--teal)'}" opacity="${isCur?1:0.55}"/>
+      <text x="${x+barW/2}" y="${chartH+16}" font-size="10" text-anchor="middle" fill="var(--teal-dim)" font-family="-apple-system,sans-serif">${label}</text>`;
+  }).join('');
+
+  const recent = entries.slice().sort((a,b)=> (b.date||'').localeCompare(a.date||'')).slice(0,5);
+  const recentHtml = recent.map(e=>`
+    <div class="row-item"><span>${esc(e.item)}<span class="who"> · ${esc(e.shop)}</span></span><span>MVR ${e.price.toFixed(2)}</span></div>
+  `).join('');
+
+  box.innerHTML = `
+    <div class="stat-grid">
+      <div class="stat-card"><div class="num">MVR ${thisMonthTotal.toFixed(0)}</div><div class="lbl">Spent this month</div></div>
+      <div class="stat-card"><div class="num">${distinctItems}</div><div class="lbl">Items tracked</div></div>
+      <div class="stat-card"><div class="num">${esc(bestShop)}</div><div class="lbl">Best value shop</div></div>
+    </div>
+    <div class="dash-section-title">Last 6 months</div>
+    <div class="chart-card"><svg viewBox="0 0 ${w} ${chartH+22}" style="width:100%; height:${chartH+22}px;">${bars}</svg></div>
+    <div class="dash-section-title">Recent entries</div>
+    <div class="recent">${recentHtml}</div>
+  `;
+}
+
+function renderSpending(){
+  const box = $('#spendingList');
+  if(!entries.length){ box.innerHTML = '<div class="empty">No entries yet.</div>'; return; }
+  const months = {};
+  entries.forEach(e=>{
+    const key = (e.date || '').slice(0,7); // YYYY-MM
+    if(!key) return;
+    (months[key] = months[key] || {total:0, count:0});
+    months[key].total += e.price;
+    months[key].count += 1;
+  });
+  const now = new Date();
+  const currentKey = now.toISOString().slice(0,7);
+  const keys = Object.keys(months).sort((a,b)=> b.localeCompare(a));
+  box.innerHTML = keys.map(k=>{
+    const [y,m] = k.split('-');
+    const label = new Date(+y, +m-1, 1).toLocaleDateString('en-US', {month:'long', year:'numeric'});
+    const d = months[k];
+    return `<div class="month-card ${k===currentKey?'current':''}">
+      <div><span class="label">${label}${k===currentKey?'<span class="tag">THIS MONTH</span>':''}</span>
+      <span class="count">${d.count} entr${d.count===1?'y':'ies'}</span></div>
+      <div class="amount">MVR ${d.total.toFixed(2)}</div>
+    </div>`;
+  }).join('');
 }
 
 function renderShops(){
@@ -384,6 +523,19 @@ $('#fileInput').addEventListener('change', (e)=>{
 });
 
 load(); render();
+
+function showTab(name){
+  const tabs = {dash:['tabDash','panelDash'], items:['tabItems','panelItems'], shops:['tabShops','panelShops'], spending:['tabSpending','panelSpending']};
+  Object.keys(tabs).forEach(k=>{
+    const [tabId, panelId] = tabs[k];
+    $('#'+tabId).classList.toggle('active', k===name);
+    $('#'+panelId).style.display = (k===name) ? '' : 'none';
+  });
+}
+$('#tabDash').addEventListener('click', ()=> showTab('dash'));
+$('#tabItems').addEventListener('click', ()=> showTab('items'));
+$('#tabShops').addEventListener('click', ()=> showTab('shops'));
+$('#tabSpending').addEventListener('click', ()=> showTab('spending'));
 </script>
 </body>
 </html>

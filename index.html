@@ -23,11 +23,37 @@ input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px
 .stat-grid{display:flex;gap:10px;flex-wrap:wrap}.stat-card{flex:1;min-width:140px;padding:14px}.num{font-size:21px;font-weight:800;color:var(--teal)}.lbl{font-size:12px;color:var(--dim);margin-top:2px}.shop-grid{display:flex;flex-wrap:wrap;gap:10px}.shop-card{flex:1;min-width:160px;padding:13px}.shop-card .name{font-weight:700}.shop-card .stat{font-size:12px;color:var(--dim);margin-top:3px}.month-card{display:flex;justify-content:space-between;padding:14px;margin-bottom:9px}.month-card .count{display:block;font-size:12px;color:var(--dim);margin-top:3px}.recent{overflow:hidden}.recent div{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px}.recent div:last-child{border:0}
 .modal{display:none;position:fixed;inset:0;background:#0008;z-index:20;align-items:flex-end;justify-content:center}.modal.open{display:flex}.modalbox{width:min(700px,100%);background:var(--card);border-radius:16px 16px 0 0;padding:18px;max-height:90vh;overflow:auto}.modal h3{margin-top:0}
 .notice{padding:10px;border-radius:8px;background:color-mix(in srgb,var(--coral) 15%,transparent);font-size:13px;margin-top:10px}
+
+.search-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.search-title{font:700 14px -apple-system,sans-serif;margin-bottom:7px}
+.search-results{margin-top:10px}
+.search-result{padding:11px 0;border-top:1px solid var(--line)}
+.search-result:first-child{border-top:0}
+.search-item-title{font-weight:700;margin-bottom:5px}
+.shop-price{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0}
+.shop-price .cheap{color:var(--good);font-weight:800}
+.match-note{font-size:12px;color:var(--dim);margin-top:3px}
+.list-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.list-upload{display:flex;gap:8px;flex-wrap:wrap}
+.list-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.list-stat{background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:10px;text-align:center}
+.list-stat b{display:block;font-size:18px;color:var(--teal)}
+.list-stat span{font-size:11px;color:var(--dim)}
+.compare-shop{border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:8px;background:var(--paper)}
+.compare-shop.top{border-color:var(--good)}
+.compare-shop .shop-name{font-weight:800}
+.compare-items{margin-top:8px;font-size:12px;color:var(--dim)}
+.category-badge{display:inline-block;font-size:10px;padding:3px 6px;border-radius:5px;background:var(--paper);border:1px solid var(--line);color:var(--dim);margin-left:5px;vertical-align:middle}
 </style>
 </head>
 <body>
 <header><h1>Price Log</h1><p>Track what things cost at different shops, from scanned bills or by hand.</p></header>
 <main>
+<div class="search-card">
+  <div class="search-title">Find the cheapest price</div>
+  <input id="itemSearch" placeholder="Search an item, e.g. milk, shampoo, chicken..." autocomplete="off">
+  <div class="search-results" id="searchResults"></div>
+</div>
 <div class="card">
 <div class="row">
 <div class="field"><label>Item</label><input id="item" placeholder="e.g. Rice 5kg"></div>
@@ -46,8 +72,8 @@ input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px
 <div id="billInfo"></div><div id="candidates" class="candidates"></div>
 </div>
 
-<div class="tabs"><button class="tab active" data-tab="dash">Dashboard</button><button class="tab" data-tab="items">Items</button><button class="tab" data-tab="shops">Shops</button><button class="tab" data-tab="spending">Spending</button></div>
-<section id="dash"></section><section id="items" style="display:none"></section><section id="shops" style="display:none"></section><section id="spending" style="display:none"></section>
+<div class="tabs"><button class="tab active" data-tab="dash">Dashboard</button><button class="tab" data-tab="items">Items</button><button class="tab" data-tab="shops">Shops</button><button class="tab" data-tab="spending">Spending</button><button class="tab" data-tab="shopping">Shopping List</button></div>
+<section id="dash"></section><section id="items" style="display:none"></section><section id="shops" style="display:none"></section><section id="spending" style="display:none"></section><section id="shopping" style="display:none"></section>
 </main>
 
 <div id="modal" class="modal"><div class="modalbox"><h3 id="modalTitle">Edit entry</h3><div class="row"><div class="field"><label>Item</label><input id="mItem"></div><div class="field"><label>Category</label><input id="mCat"></div></div><div class="row" style="margin-top:10px"><div class="field"><label>Shop</label><input id="mShop"></div><div class="field"><label>Price</label><input id="mPrice" type="number" step=".01"></div></div><div class="field" style="margin-top:10px"><label>Date</label><input id="mDate" type="date"></div><div class="btnrow"><button class="primary" id="saveEdit">Save changes</button><button class="ghost" id="cancelEdit">Cancel</button></div></div></div>
@@ -55,14 +81,99 @@ input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px
 <script>
 "use strict";
 const KEY="price-log-entries-v1";
+const BILL_KEY="price-log-bills-v1";
+const SHOPPING_KEY="price-log-shopping-v1";
+let bills=[];
 let entries=[], scanEntries=[], currentEdit=-1, currentBill=null;
+let shoppingItems=[];
 
 const $=id=>document.getElementById(id);
 function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
-function load(){try{entries=JSON.parse(localStorage.getItem(KEY)||"[]");if(!Array.isArray(entries))entries=[]}catch(e){entries=[]}}
+function load(){
+ try{entries=JSON.parse(localStorage.getItem(KEY)||"[]");if(!Array.isArray(entries))entries=[]}catch(e){entries=[]}
+ try{bills=JSON.parse(localStorage.getItem(BILL_KEY)||"[]");if(!Array.isArray(bills))bills=[]}catch(e){bills=[]}
+ try{shoppingItems=JSON.parse(localStorage.getItem(SHOPPING_KEY)||"[]");if(!Array.isArray(shoppingItems))shoppingItems=[]}catch(e){shoppingItems=[]}
+}
 function save(){localStorage.setItem(KEY,JSON.stringify(entries))}
+function saveBills(){localStorage.setItem(BILL_KEY,JSON.stringify(bills))}
+function saveShopping(){localStorage.setItem(SHOPPING_KEY,JSON.stringify(shoppingItems))}
+function billId(b){
+ return `${(b.shop||"").toLowerCase().trim()}|${b.date||""}|${Number(b.total||0).toFixed(2)}|${Number(b.subtotal||0).toFixed(2)}`;
+}
+function billSpend(b){
+ const explicit=Number(b.total);
+ if(Number.isFinite(explicit) && explicit>0) return explicit;
+ let n=Number(b.subtotal||0);
+ if(!n)n=Number(b.itemTotal||0);
+ n+=Number(b.tax||0);
+ n-=Number(b.discount||0);
+ n-=Number(b.pointsUsed||0);
+ return Math.max(0,n);
+}
+function upsertBill(){
+ if(!currentBill)return;
+ currentBill.shop=(currentBill.shop||$("shop").value.trim()||"Unknown shop").trim();
+ currentBill.id=currentBill.id||billId(currentBill);
+ const existing=bills.findIndex(b=>b.id===currentBill.id);
+ const record={
+   id:currentBill.id,shop:currentBill.shop,date:currentBill.date,
+   subtotal:currentBill.subtotal,tax:currentBill.tax,total:currentBill.total,
+   discount:currentBill.discount,pointsUsed:currentBill.pointsUsed,
+   itemTotal:scanEntries.reduce((a,x)=>a+Number(x.price||0),0)
+ };
+ if(existing>=0)bills[existing]=record;else bills.push(record);
+ saveBills();
+}
 function today(){return new Date().toISOString().slice(0,10)}
+
 $("date").value=today();
+
+function autoCategory(item){
+ const s=String(item||"").toLowerCase();
+ if(/\b(chicken|broiler|wing|wings|drumstick|thigh|breast|nugget|tender|chicken\s*sausage)\b/.test(s))return "Chicken";
+ if(/\b(beef|steak|mince|ground\s*beef|mutton|lamb|veal|pork|meat|sausage|burger\s*patty)\b/.test(s))return "Meat";
+ if(/\b(shampoo|conditioner|soap|face\s*wash|facial|moisturizer|moisturiser|cream|lotion|serum|makeup|foundation|lipstick|mascara|deodorant|perfume|cosmetic|toothpaste|toothbrush|sunscreen|razor|sanitary|skincare|skin\s*care)\b/.test(s))return "Cosmetics";
+ if(/\b(milk|bread|rice|flour|sugar|salt|oil|butter|cheese|egg|eggs|pasta|noodle|cereal|oat|biscuit|wafer|juice|coffee|tea|sauce|spice|canned|coconut|water|snack|chocolate|food)\b/.test(s))return "Grocery";
+ if(/\b(fish|tuna|sardine|mackerel|reef|seafood|prawn|shrimp)\b/.test(s))return "Fish & Seafood";
+ if(/\b(detergent|bleach|cleaner|dishwash|dish\s*wash|sponge|tissue|napkin|serviette|trash\s*bag|garbage\s*bag)\b/.test(s))return "Household";
+ if(/\b(diaper|nappy|baby|infant|formula)\b/.test(s))return "Baby";
+ return "Other";
+}
+function applyAutoCategories(){
+ let changed=false;
+ entries.forEach(e=>{if(!e.category||/^(uncategorized|other)$/i.test(e.category)){const c=autoCategory(e.item);if(c!==e.category){e.category=c;changed=true}}});
+ if(changed)save();
+}
+function normItem(s){
+ return String(s||"").toLowerCase().replace(/[^a-z0-9\s]/g," ").replace(/\s+/g," ").trim()
+}
+function itemMatch(a,b){
+ const x=normItem(a),y=normItem(b);
+ if(!x||!y)return false;
+ if(x===y||x.includes(y)||y.includes(x))return true;
+ const A=new Set(x.split(" ").filter(w=>w.length>2)),B=new Set(y.split(" ").filter(w=>w.length>2));
+ const inter=[...A].filter(w=>B.has(w)).length;
+ return inter>=2 && inter/Math.min(A.size,B.size)>=0.55;
+}
+function renderItemSearch(){
+ const q=$("itemSearch").value.trim();
+ const box=$("searchResults");
+ if(!q){box.innerHTML='<div class="match-note">Type an item to compare prices across your recorded shops.</div>';return}
+ const matches=entries.filter(e=>itemMatch(e.item,q));
+ if(!matches.length){box.innerHTML='<div class="match-note">No matching item found in your price log.</div>';return}
+ const groups={};
+ matches.forEach(e=>{const k=normItem(e.item);(groups[k]??=[]).push(e)});
+ box.innerHTML=Object.values(groups).map(rows=>{
+   const min=Math.min(...rows.map(e=>Number(e.price)));
+   const label=rows[0].item;
+   const unique={};
+   rows.forEach(e=>{if(!unique[e.shop]||e.price<unique[e.shop].price)unique[e.shop]=e});
+   const shopRows=Object.values(unique).sort((a,b)=>a.price-b.price);
+   return `<div class="search-result"><div class="search-item-title">${esc(label)} <span class="category-badge">${esc(rows[0].category||autoCategory(label))}</span></div>
+   ${shopRows.map(e=>`<div class="shop-price"><span>${esc(e.shop)}</span><span class="${e.price===min?'cheap':''}">MVR ${Number(e.price).toFixed(2)} ${e.price===min?'· cheapest':''}</span></div>`).join("")}</div>`
+ }).join("");
+}
+
 
 function render(){
  renderItems();renderShops();renderSpending();renderDash();renderCats();
@@ -72,7 +183,7 @@ function renderCats(){$("categoryList").innerHTML=[...new Set(entries.map(e=>e.c
 $("addBtn").onclick=()=>{
  const item=$("item").value.trim(),shop=$("shop").value.trim(),price=parseFloat($("price").value),date=$("date").value||today(),category=$("category").value.trim();
  if(!item||!shop||!Number.isFinite(price)){ $("status").textContent="Fill in item, shop and price.";return}
- entries.push({item,category,shop,price,date});
+ entries.push({item,category:category||autoCategory(item),shop,price,date});
  save();render();$("item").value="";$("shop").value="";$("price").value="";$("status").textContent="Added.";
 };
 $("editBtn").onclick=()=>openEdit(-1,true);
@@ -113,19 +224,124 @@ function renderShops(){
  const shops={};entries.forEach(e=>{shops[e.shop]=(shops[e.shop]||0)+1});
  $("shops").innerHTML='<div class="shop-grid">'+Object.keys(shops).sort().map(s=>`<div class="shop-card"><div class="name">${esc(s)}</div><div class="stat">${shops[s]} entries logged</div></div>`).join("")+'</div>';
 }
+function spendingByMonth(){
+ const m={};
+ // Manual entries and legacy entries without a linked scanned bill.
+ entries.forEach(e=>{
+   if(e.sourceBillId)return;
+   const k=(e.date||"").slice(0,7); if(!k)return;
+   (m[k]??={total:0,count:0}); m[k].total+=Number(e.price||0); m[k].count++;
+ });
+ // A scanned bill is counted once at its actual total, so GST is included.
+ bills.forEach(b=>{
+   const k=(b.date||"").slice(0,7); if(!k)return;
+   (m[k]??={total:0,count:0}); m[k].total+=billSpend(b); m[k].count++;
+ });
+ return m;
+}
 function renderSpending(){
- const m={};entries.forEach(e=>{const k=(e.date||"").slice(0,7);if(k)(m[k]??={total:0,count:0}),m[k].total+=e.price,m[k].count++});
- $("spending").innerHTML=Object.keys(m).sort().reverse().map(k=>{const [y,mo]=k.split("-");const label=new Date(+y,+mo-1,1).toLocaleDateString("en-US",{month:"long",year:"numeric"});return `<div class="month-card"><div><b>${label}</b><span class="count">${m[k].count} entries</span></div><b>MVR ${m[k].total.toFixed(2)}</b></div>`}).join("")||'<div class="empty">No entries yet.</div>';
+ const m=spendingByMonth();
+ $("spending").innerHTML=Object.keys(m).sort().reverse().map(k=>{
+   const [y,mo]=k.split("-");
+   const label=new Date(+y,+mo-1,1).toLocaleDateString("en-US",{month:"long",year:"numeric"});
+   return `<div class="month-card"><div><b>${label}</b><span class="count">${m[k].count} bill/entry${m[k].count===1?"":"ies"}</span></div><b>MVR ${m[k].total.toFixed(2)}</b></div>`;
+ }).join("")||'<div class="empty">No entries yet.</div>';
 }
 function renderDash(){
- const now=today().slice(0,7),total=entries.filter(e=>e.date?.slice(0,7)===now).reduce((a,e)=>a+e.price,0),items=new Set(entries.map(e=>e.item.toLowerCase())).size;
+ const now=today().slice(0,7),monthly=spendingByMonth(),total=monthly[now]?.total||0,items=new Set(entries.map(e=>e.item.toLowerCase())).size;
  const recent=entries.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,5);
  $("dash").innerHTML=`<div class="stat-grid"><div class="stat-card"><div class="num">MVR ${total.toFixed(2)}</div><div class="lbl">Spent this month</div></div><div class="stat-card"><div class="num">${items}</div><div class="lbl">Items tracked</div></div><div class="stat-card"><div class="num">${entries.length}</div><div class="lbl">Entries</div></div></div><h3>Recent entries</h3><div class="recent">${recent.map(e=>`<div><span>${esc(e.item)} · ${esc(e.shop)}</span><b>MVR ${e.price.toFixed(2)}</b></div>`).join("")||'<div>No entries yet.</div>'}</div>`;
 }
 
+
+function parseShoppingText(text){
+ return text.split(/\r?\n/).map(x=>x.trim()).filter(x=>x&&x.length>1)
+   .map(x=>x.replace(/^[-•*]\s*/,"").replace(/^\d+\s*[xX×]\s*/,"").trim())
+   .filter((x,i,a)=>a.findIndex(y=>y.toLowerCase()===x.toLowerCase())===i);
+}
+function mergeShoppingItems(items){
+ const incoming=parseShoppingText(items.join("\n"));
+ const seen=new Set(shoppingItems.map(x=>x.toLowerCase()));
+ let added=0;
+ incoming.forEach(x=>{const k=x.toLowerCase();if(!seen.has(k)){shoppingItems.push(x);seen.add(k);added++}});
+ saveShopping();
+ return added;
+}
+function importShoppingFromUrl(){
+ const params=new URLSearchParams(location.search);
+ const raw=params.get("shopping")||params.get("items")||params.get("item");
+ if(!raw)return 0;
+ const added=mergeShoppingItems(raw.replace(/\r/g,"\n").split(/\n+/));
+ const tab=document.querySelector('.tab[data-tab="shopping"]');
+ if(tab){document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));tab.classList.add("active");}
+ ["dash","items","shops","spending","shopping"].forEach(x=>$(x).style.display=x==="shopping"?"":"none");
+ history.replaceState({},document.title,location.pathname+location.hash);
+ return added;
+}
+function renderShopping(){
+ const box=$("shopping");
+ if(!shoppingItems.length){
+   box.innerHTML=`<div class="list-card">
+     <h3 style="margin-top:0">Shopping list comparison</h3>
+     <p class="match-note">Upload a TXT/CSV shopping list, paste items one per line, or send items from Apple Reminders using the Price Log Shortcut.</p>
+     <textarea id="shoppingText" placeholder="Rice 5kg&#10;Milk 1L&#10;Chicken&#10;Shampoo"></textarea>
+     <div class="btnrow"><button class="primary" id="compareList">Compare prices</button><button class="ghost" id="uploadListBtn">Upload list</button></div>
+     <input id="shoppingFile" type="file" accept=".txt,.csv,text/plain,text/csv,image/*" hidden>
+   </div>`;
+   $("compareList").onclick=()=>{shoppingItems=parseShoppingText($("shoppingText").value);saveShopping();renderShopping()};
+   $("uploadListBtn").onclick=()=>$("shoppingFile").click();
+   $("shoppingFile").onchange=e=>handleShoppingFile(e.target.files[0]);
+   return;
+ }
+ const results=shoppingItems.map(item=>{
+   const rows=entries.filter(e=>itemMatch(e.item,item));
+   if(!rows.length)return {item,rows:[],cheapest:null};
+   const byShop={};
+   rows.forEach(e=>{if(!byShop[e.shop]||e.price<byShop[e.shop].price)byShop[e.shop]=e});
+   const cheapest=Object.values(byShop).sort((a,b)=>a.price-b.price)[0];
+   return {item,rows:Object.values(byShop).sort((a,b)=>a.price-b.price),cheapest};
+ });
+ const found=results.filter(r=>r.cheapest);
+ const shopTotals={};
+ found.forEach(r=>{const s=r.cheapest.shop;(shopTotals[s]??={count:0,total:0,items:[]});shopTotals[s].count++;shopTotals[s].total+=Number(r.cheapest.price);shopTotals[s].items.push(`${r.item} (MVR ${Number(r.cheapest.price).toFixed(2)})`)});
+ const ranked=Object.entries(shopTotals).sort((a,b)=>b[1].count-a[1].count||a[1].total-b[1].total);
+ box.innerHTML=`<div class="list-card">
+   <div class="search-title">Shopping list</div>
+   <div class="match-note">${shoppingItems.length} item(s) · ${found.length} matched in your price log</div>
+   <div class="btnrow"><button class="ghost" id="changeList">Change list</button><button class="ghost" id="clearList">Clear</button></div>
+   ${ranked.length?`<h3>Where you can get the most cheap items</h3>${ranked.map((r,i)=>`<div class="compare-shop ${i===0?'top':''}"><div class="shop-name">${esc(r[0])} ${i===0?'<span class="badge">MOST CHEAP ITEMS</span>':''}</div><div class="match-note">${r[1].count} of ${found.length} cheapest item(s) · estimated MVR ${r[1].total.toFixed(2)}</div><div class="compare-items">${r[1].items.map(esc).join(" · ")}</div></div>`).join("")}`:'<div class="match-note">No matching prices yet.</div>'}
+   <h3>Item-by-item comparison</h3>
+   ${results.map(r=>`<div class="search-result"><div class="search-item-title">${esc(r.item)}</div>${r.rows.length?r.rows.map(e=>`<div class="shop-price"><span>${esc(e.shop)}</span><span class="${e===r.cheapest?'cheap':''}">MVR ${Number(e.price).toFixed(2)}${e===r.cheapest?' · cheapest':''}</span></div>`).join(""):'<div class="match-note">Not found in your price log.</div>'}</div>`).join("")}
+ </div>`;
+ $("changeList").onclick=()=>{shoppingItems=[];saveShopping();renderShopping()};
+ $("clearList").onclick=()=>{shoppingItems=[];saveShopping();renderShopping()};
+}
+function showReminderImportStatus(added){
+ const box=$("shopping");
+ if(!box)return;
+ const existing=box.querySelector(".reminder-import");
+ if(existing)existing.remove();
+ const n=document.createElement("div");
+ n.className="list-card reminder-import";
+ n.innerHTML=added>0?`<div class="match-note"><b>Reminders imported:</b> ${added} new item${added===1?"":"s"}. Prices are ready to compare below.</div>`:`<div class="match-note"><b>Reminders sync:</b> all imported items were already in your Shopping List.</div>`;
+ box.prepend(n);
+}
+
+async function handleShoppingFile(file){
+ if(!file)return;
+ if(file.type.startsWith("image/")){
+   $("shopping").innerHTML='<div class="list-card"><div class="match-note">Reading shopping list image…</div></div>';
+   try{
+     const T=await loadOCR();const processed=await preprocess(file);const r=await T.recognize(processed,"eng");
+     shoppingItems=parseShoppingText(r.data.text||"");saveShopping();renderShopping();
+   }catch(e){shoppingItems=[];saveShopping();renderShopping();alert("Could not read the shopping list image.")}
+ }else{
+   const text=await file.text();shoppingItems=parseShoppingText(text);saveShopping();renderShopping();
+ }
+}
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");
- ["dash","items","shops","spending"].forEach(x=>$(x).style.display=x===t.dataset.tab?"":"none");
+ ["dash","items","shops","spending","shopping"].forEach(x=>$(x).style.display=x===t.dataset.tab?"":"none");
 });
 
 $("scanBtn").onclick=()=>$("cameraInput").click();
@@ -152,7 +368,7 @@ function alreadyExists(c){
 function parseReceipt(text){
  const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
  const shop=guessShop(lines),date=guessDate(text);
- let subtotal=null,tax=null,total=null,discount=null,pointsUsed=null;
+ let subtotal=null,tax=null,total=null,discount=null,pointsUsed=null,paymentAmount=null;
  for(const line of lines){
   const low=line.toLowerCase(), nums=moneyNumbers(line);if(!nums.length)continue;
   if(/sub\s*total/.test(low))subtotal=nums[nums.length-1];
@@ -161,8 +377,15 @@ function parseReceipt(text){
   else if(/\b(points?|loyalty|reward|redeem|redeemed|redemption)\b/.test(low)){
     pointsUsed=nums[nums.length-1];
   }
-  else if(/\btotal\b/.test(low)&&!/subtotal/.test(low))total=nums[nums.length-1];
+  else if(/\btotal\s*(?:\(\s*mvr\s*\)|mvr)?\b/i.test(low)&&!/subtotal/.test(low)){
+    total=nums[nums.length-1];
+  }
+  else if(/\b(card|paid|payment|cash|settled)\b/.test(low)&&!/outstanding|balance/.test(low)){
+    paymentAmount=nums[nums.length-1];
+  }
  }
+ if(total==null && paymentAmount!=null) total=paymentAmount;
+ if(total==null && subtotal!=null) total=Math.max(0,subtotal+(tax||0)-(discount||0)-(pointsUsed||0));
  const noise=/^(subtotal|sub\s*total|total|gst|tax|vat|cash|change|balance|amount|payment|paid|card|card\s*customer|credit\s*card|debit\s*card|visa|mastercard|master|amex|tender|discount|disc|points?|loyalty|reward|redeem|redeemed|redemption|rounding|thank|thank\s*you|date|time|invoice|bill|receipt|qty|quantity|description|customer|customer\s*tn|tin|print\s*by|powered\s*by)$/i;
  const found=[];
  for(let i=0;i<lines.length;i++){
@@ -186,14 +409,40 @@ function renderScan(){
  const c=$("candidates");if(!scanEntries.length){c.innerHTML="";return}
  const newCount=scanEntries.filter(x=>!x.added).length;
  c.innerHTML=`<div style="font-size:12px;color:var(--dim);margin-bottom:6px">Found ${scanEntries.length} priced item(s). ${newCount?newCount+" new/missing item(s)":"All detected items are already recorded."}</div>
- ${newCount?'<button class="primary" id="addMissing">Add missing items</button>':''}
+ ${newCount?'<div class="btnrow" style="margin-top:6px"><button class="primary" id="addAllScanned">Add all from scanned bill</button><button class="ghost" id="addMissingScanned">Add missing only</button></div>':''}
  ${scanEntries.map((x,i)=>`<div class="cand ${x.added?'':'new'}"><span class="cand-text">${esc(x.item)}<br><small style="color:var(--dim)">${esc(x.shop)}</small></span>${x.added?'<span class="badge">Already added</span>':""}<span class="cand-price">MVR ${x.price.toFixed(2)}</span><button class="ghost small" onclick="editCandidate(${i})">${x.added?"View/Edit":"Edit"}</button>${x.added?"":`<button class="ghost small" onclick="addCandidate(${i})">Add</button>`}</div>`).join("")}`;
- if($("addMissing"))$("addMissing").onclick=()=>scanEntries.forEach((x,i)=>{if(!x.added)addCandidate(i)});
+ if($("addAllScanned"))$("addAllScanned").onclick=()=>{
+   scanEntries.forEach((x,i)=>addCandidate(i));
+   upsertBill();
+   $("status").textContent=`Added ${scanEntries.length} item(s) from the scanned bill. Total spend includes tax.`;
+   renderScan();
+ };
+ if($("addMissingScanned"))$("addMissingScanned").onclick=()=>{
+   const before=scanEntries.filter(x=>!x.added).length;
+   scanEntries.forEach((x,i)=>{if(!x.added)addCandidate(i)});
+   upsertBill();
+   $("status").textContent=before?`Added ${before} missing item(s). Total spend includes tax.`:"No missing items.";
+   renderScan();
+ };
 }
-function addCandidate(i){const x=scanEntries[i];if(x.added)return;entries.push({item:x.item,category:$("category").value.trim(),shop:x.shop,price:x.price,date:x.date});x.added=true;save();render();renderScan()}
+function addCandidate(i){
+ const x=scanEntries[i];
+ if(!x||x.added)return;
+ const shop=(x.shop||currentBill?.shop||$("shop").value.trim()||"Unknown shop").trim();
+ const candidate={item:x.item,category:x.category||$("category").value.trim(),shop,price:Number(x.price),date:x.date||currentBill?.date||today(),sourceBillId:currentBill?.id||null};
+ const duplicate=entries.some(e=>duplicateKey(e)===duplicateKey(candidate));
+ if(!duplicate){
+   entries.push(candidate);
+   save();
+   upsertBill();
+ }
+ x.added=true;
+ x.shop=shop;
+ render();
+}
 function editCandidate(i){
  const x=scanEntries[i];currentEdit=-1;$("mItem").value=x.item;$("mCat").value=$("category").value;$("mShop").value=x.shop;$("mPrice").value=x.price;$("mDate").value=x.date;$("modal").classList.add("open");
- $("saveEdit").onclick=()=>{x.item=$("mItem").value.trim();x.shop=$("mShop").value.trim();x.price=parseFloat($("mPrice").value);x.date=$("mDate").value||today();x.category=$("mCat").value.trim();x.added=alreadyExists(x);if(!x.added){entries.push({item:x.item,category:x.category,shop:x.shop,price:x.price,date:x.date});x.added=true;save();render()}$("modal").classList.remove("open");renderScan()}
+ $("saveEdit").onclick=()=>{x.item=$("mItem").value.trim();x.shop=$("mShop").value.trim();x.price=parseFloat($("mPrice").value);x.date=$("mDate").value||today();x.category=$("mCat").value.trim();x.added=alreadyExists(x);if(!x.added){entries.push({item:x.item,category:x.category,shop:x.shop,price:x.price,date:x.date,sourceBillId:currentBill?.id||null});x.added=true;upsertBill();save();render()}$("modal").classList.remove("open");renderScan()}
 }
 
 async function loadOCR(){
@@ -211,6 +460,7 @@ async function handleFile(file){
   const processed=await preprocess(file);
   const r=await T.recognize(processed,"eng",{logger:m=>{if(m.status==="recognizing text")$("status").textContent=`Reading receipt… ${Math.round((m.progress||0)*100)}%`}});
   currentBill=parseReceipt(r.data.text||"");
+  currentBill.id=billId(currentBill);
   scanEntries=currentBill.items;
   $("billInfo").innerHTML=`<div class="billbox">
   <div class="field" style="margin-bottom:10px">
@@ -220,7 +470,7 @@ async function handleFile(file){
   <div class="billrow"><span>Date</span><b>${esc(currentBill.date)}</b></div>${currentBill.subtotal!=null?`<div class="billrow"><span>Subtotal</span><b>MVR ${currentBill.subtotal.toFixed(2)}</b></div>`:""}${currentBill.tax!=null?`<div class="billrow"><span>GST / Tax</span><b>MVR ${currentBill.tax.toFixed(2)}</b></div>`:""}
   ${currentBill.discount!=null?`<div class="billrow"><span>Discount</span><b>− MVR ${currentBill.discount.toFixed(2)}</b></div>`:""}
   ${currentBill.pointsUsed!=null?`<div class="billrow"><span>Customer points used</span><b>MVR ${currentBill.pointsUsed.toFixed(2)}</b></div>`:""}
-  ${currentBill.total!=null?`<div class="billrow total"><span>Total paid</span><b>MVR ${currentBill.total.toFixed(2)}</b></div>`:""}</div>`;
+  ${currentBill.total!=null?`<div class="billrow total"><span>Total paid</span><b>MVR ${currentBill.total.toFixed(2)}</b></div>`:""}<div class="status" style="margin-top:8px">Spending uses the bill total, including GST / tax.</div></div>`;
   const dup=scanEntries.length&&scanEntries.every(x=>x.added);
   $("status").textContent=dup?"Duplicate/previously scanned bill detected. No new items found.":`Read ${scanEntries.length} item(s). Review and add missing items.`;
   renderScan();
@@ -228,13 +478,19 @@ async function handleFile(file){
   if(shopEdit){
     shopEdit.addEventListener("input",()=>{
       currentBill.shop=shopEdit.value.trim();
+      currentBill.id=billId(currentBill);
       scanEntries.forEach(x=>x.shop=currentBill.shop);
       renderScan();
     });
   }
  }catch(e){console.error(e);$("status").textContent="Receipt could not be read. You can still use Add entry or try another photo."}
 }
-load();render();
+$("itemSearch").addEventListener("input",renderItemSearch);
+load();applyAutoCategories();render();renderItemSearch();renderShopping();
+const importedFromReminders=importShoppingFromUrl();
+if(importedFromReminders>0){renderShopping();showReminderImportStatus(importedFromReminders);}
+else if(new URLSearchParams(location.search).has("shopping")||new URLSearchParams(location.search).has("items")||new URLSearchParams(location.search).has("item")){renderShopping();showReminderImportStatus(0);}
+
 </script>
 </body>
 </html>

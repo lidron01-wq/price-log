@@ -360,7 +360,7 @@ $('#fileInput').addEventListener('change', (e)=>{
           if(isNaN(price) || price<=0) return;
           let name = line.slice(0, m.index).replace(/[|_\-–—]+$/,'').trim();
           name = name.replace(/\b\d+\s*(pcs|pc|kg|g|ml|l)\b\.?/gi,'').trim();
-          if(!name || /^(total|subtotal|cash|change|tax|gst|amount|balance|tendered)/i.test(name)) return;
+          if(!name || /(sub\s*total|total|cash|change|tax|gst|g\.s\.t|amount|balance|tender|card|visa|master|debit|credit|payment|due|discount|round)/i.test(name)) return;
           found.push({shop, item:name, price, date, added:false});
         });
         if(!found.length){

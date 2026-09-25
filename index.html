@@ -353,14 +353,22 @@ $('#fileInput').addEventListener('change', (e)=>{
         const shop = guessShop(lines) || $('#shop').value.trim() || 'Unknown shop';
         const date = guessDate(text);
         const found = [];
-        lines.forEach(line=>{
+        const isNoise = /(sub\s*total|total|cash|change|tax|gst|g\.s\.t|amount|balance|tender|card|visa|master|debit|credit|payment|due|discount|round|qty|item)/i;
+        lines.forEach((line, i)=>{
           const m = line.match(/(\d{1,4}[.,]\d{2})(?!.*\d[.,]\d{2})/);
           if(!m) return;
           const price = parseFloat(m[1].replace(',', '.'));
           if(isNaN(price) || price<=0) return;
           let name = line.slice(0, m.index).replace(/[|_\-–—]+$/,'').trim();
           name = name.replace(/\b\d+\s*(pcs|pc|kg|g|ml|l)\b\.?/gi,'').trim();
-          if(!name || /(sub\s*total|total|cash|change|tax|gst|g\.s\.t|amount|balance|tender|card|visa|master|debit|credit|payment|due|discount|round)/i.test(name)) return;
+          if(!name){
+            // price sat on its own line — borrow the nearest earlier line that isn't itself a price/noise line
+            for(let j=i-1; j>=0 && j>=i-2; j--){
+              const prev = lines[j].replace(/\b\d+\s*(pcs|pc|kg|g|ml|l)\b\.?/gi,'').trim();
+              if(prev && !/\d[.,]\d{2}/.test(prev) && !isNoise.test(prev)){ name = prev; break; }
+            }
+          }
+          if(!name || isNoise.test(name)) return;
           found.push({shop, item:name, price, date, added:false});
         });
         if(!found.length){

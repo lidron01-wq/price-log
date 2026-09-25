@@ -2,119 +2,214 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#101817">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0E5148">
 <title>Price Log</title>
 <style>
-:root{--ink:#0E2E2C;--paper:#F6F3EA;--line:#D8D2BF;--teal:#0E5148;--teal-dim:#3E6E67;--coral:#E0623F;--card:#FFFEFA;--good:#1E6B4F;box-sizing:border-box}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--ink:#EDEAE0;--paper:#101817;--line:#2A3634;--teal:#5FBBA9;--teal-dim:#8FA9A4;--coral:#F0876A;--card:#16201F;--good:#4FCB9A}}
-:root[data-theme="dark"]{--ink:#EDEAE0;--paper:#101817;--line:#2A3634;--teal:#5FBBA9;--teal-dim:#8FA9A4;--coral:#F0876A;--card:#16201F;--good:#4FCB9A}
-*{box-sizing:border-box}html{height:100%;scroll-padding-top:env(safe-area-inset-top)}body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:"Iowan Old Style","Georgia",serif;-webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom)}header{padding:28px 20px 18px;border-bottom:1px solid var(--line)}header h1{margin:0 0 4px;font-size:28px;font-weight:600}header p{margin:0;color:var(--teal-dim);font-size:14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif}main{max-width:680px;margin:0 auto;padding:18px 16px 60px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}.row{display:flex;gap:10px;flex-wrap:wrap}.field{flex:1;min-width:130px;display:flex;flex-direction:column;gap:4px}label{font-size:12px;color:var(--teal-dim);font-family:-apple-system,BlinkMacSystemFont,sans-serif}input,select{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:16px;padding:10px;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink);width:100%}input:focus,select:focus,button:focus{outline:2px solid var(--teal);outline-offset:1px}.btnrow{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}button{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;font-weight:600;border:none;border-radius:7px;padding:11px 16px;cursor:pointer}.primary{background:var(--teal);color:var(--paper);flex:1}.ghost{background:transparent;color:var(--teal);border:1px solid var(--teal)}button:disabled{opacity:.45;cursor:not-allowed}.scan-status{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;color:var(--teal-dim);margin-top:8px;line-height:1.4}.scan-preview{display:none;width:100%;max-height:460px;object-fit:contain;background:#111;border-radius:8px;margin-top:8px;border:1px solid var(--line)}.candidates{margin-top:12px}.scan-summary{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.summary-grid .field:last-child{grid-column:1/-1}.summary-title{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;font-weight:700;color:var(--teal-dim);margin-bottom:8px}.cand{display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin-top:7px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px}.cand.added{opacity:.45}.cand-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cand-price{font-weight:700;white-space:nowrap}.cand button{padding:7px 10px;font-size:12px;flex:0 0 auto}.edit-scan{color:var(--coral)!important;border-color:var(--coral)!important}.scan-actions{display:flex;gap:8px;margin-top:10px}.scan-actions button{flex:1}.bill-total{display:flex;justify-content:space-between;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;padding:5px 0}.bill-total strong{font-size:16px}.bill-total.total{border-top:1px solid var(--line);margin-top:4px;padding-top:9px}.tabs{display:flex;gap:4px;margin:24px 0 12px;border-bottom:1px solid var(--line);overflow-x:auto}.tab{background:none;border:none;padding:8px 4px 10px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:15px;font-weight:700;color:var(--teal-dim);border-bottom:2px solid transparent;border-radius:0;cursor:pointer;margin-right:14px;white-space:nowrap}.tab.active{color:var(--ink);border-bottom-color:var(--coral)}h2{font-size:15px;font-family:-apple-system,BlinkMacSystemFont,sans-serif}.item-group{background:var(--card);border:1px solid var(--line);border-radius:10px;margin-bottom:12px;overflow:hidden}.item-head{padding:12px 16px;font-size:17px;font-weight:600;border-bottom:1px solid var(--line)}.entry{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;border-bottom:1px solid var(--line)}.entry:last-child{border-bottom:none}.entry .shop{color:var(--ink)}.entry .date{color:var(--teal-dim);font-size:12px;margin-left:6px}.entry .price{font-weight:700}.entry.cheapest .price{color:var(--good)}.entry.cheapest .shop::after{content:" — best price";color:var(--good);font-weight:600;font-size:11px}.entry-actions{display:flex;align-items:center;gap:5px}.mini{padding:5px 8px;font-size:11px;background:transparent;color:var(--teal);border:1px solid var(--teal)}.del{background:none;border:none;color:var(--teal-dim);font-size:16px;padding:0 0 0 5px}.empty{font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:var(--teal-dim);font-size:14px;padding:20px 4px}.category-head{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;font-weight:700;color:var(--coral);margin:20px 2px 8px}.category-head:first-child{margin-top:0}.shop-grid{display:flex;flex-wrap:wrap;gap:10px}.shop-card{flex:1;min-width:150px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif}.shop-card.top{border-color:var(--good)}.shop-card .name{font-size:15px;font-weight:700;margin-bottom:4px}.shop-card .name .badge{font-size:10px;color:var(--good);margin-left:6px}.shop-card .stat{font-size:12px;color:var(--teal-dim)}.month-card{display:flex;justify-content:space-between;align-items:baseline;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px;font-family:-apple-system,BlinkMacSystemFont,sans-serif}.month-card.current{border-color:var(--coral)}.month-card .label{font-size:14px;font-weight:600}.month-card .label .tag{font-size:10px;color:var(--coral);margin-left:6px}.month-card .count{font-size:12px;color:var(--teal-dim);display:block;margin-top:2px}.month-card .amount{font-size:18px;font-weight:700}.stat-grid{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}.stat-card{flex:1;min-width:140px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-family:-apple-system,BlinkMacSystemFont,sans-serif}.stat-card .num{font-size:22px;font-weight:800;color:var(--teal);overflow-wrap:anywhere}.stat-card .lbl{font-size:12px;color:var(--teal-dim);margin-top:2px}.dash-section-title{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;font-weight:700;color:var(--teal-dim);margin:18px 2px 8px}.chart-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 12px 6px;overflow:hidden}.recent{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}.recent .row-item{display:flex;justify-content:space-between;gap:8px;padding:10px 14px;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:13px;border-bottom:1px solid var(--line)}.recent .row-item:last-child{border-bottom:none}.recent .who{color:var(--teal-dim);font-size:11px}.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;z-index:20;padding:12px}.modal.show{display:flex}.modal-card{width:min(680px,100%);background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;max-height:90vh;overflow:auto}.modal-title{font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-weight:700;font-size:17px;margin-bottom:12px}.modal-actions{display:flex;gap:8px;margin-top:12px}.modal-actions button{flex:1}
+:root{--ink:#0E2E2C;--paper:#F6F3EA;--line:#D8D2BF;--teal:#0E5148;--dim:#3E6E67;--coral:#E0623F;--card:#FFFEFA;--good:#1E6B4F}
+@media(prefers-color-scheme:dark){:root{--ink:#EDEAE0;--paper:#101817;--line:#2A3634;--teal:#5FBBA9;--dim:#8FA9A4;--coral:#F0876A;--card:#16201F;--good:#4FCB9A}}
+*{box-sizing:border-box}html{height:100%}body{margin:0;min-height:100%;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+header{padding:28px 20px 18px;border-bottom:1px solid var(--line)}h1{margin:0 0 4px;font:600 28px Georgia,serif}header p{margin:0;color:var(--dim);font-size:14px}
+main{max-width:700px;margin:auto;padding:18px 16px 60px}.card,.item-group,.shop-card,.month-card,.stat-card,.chart-card,.recent{background:var(--card);border:1px solid var(--line);border-radius:12px}
+.card{padding:16px;margin-bottom:16px}.row{display:flex;gap:10px;flex-wrap:wrap}.field{flex:1;min-width:130px;display:flex;flex-direction:column;gap:4px}label{font-size:12px;color:var(--dim)}
+input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);width:100%}
+.btnrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}button{font:600 14px -apple-system,sans-serif;border:0;border-radius:8px;padding:11px 15px;cursor:pointer}
+.primary{background:var(--teal);color:var(--paper);flex:1}.ghost{background:transparent;color:var(--teal);border:1px solid var(--teal)}.danger{color:#b33;background:transparent;border:1px solid #b33}.small{padding:7px 10px;font-size:12px}
+.status{font-size:13px;color:var(--dim);margin-top:9px}.preview{display:none;width:100%;max-height:300px;object-fit:contain;margin-top:10px;border:1px solid var(--line);border-radius:8px}
+.tabs{display:flex;gap:8px;overflow:auto;border-bottom:1px solid var(--line);margin:24px 0 14px}.tab{background:none;color:var(--dim);border:0;border-bottom:2px solid transparent;border-radius:0;padding:9px 5px;margin-right:8px;white-space:nowrap}.tab.active{color:var(--ink);border-bottom-color:var(--coral)}
+.empty{color:var(--dim);font-size:14px;padding:20px 4px}.category-head{font-size:13px;font-weight:700;color:var(--coral);margin:18px 2px 8px}.item-group{overflow:hidden;margin-bottom:12px}.item-head{padding:12px 14px;font-weight:700;border-bottom:1px solid var(--line)}.entry{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:14px}.entry:last-child{border:0}.date{color:var(--dim);font-size:11px}.price{font-weight:700}.entry-actions{display:flex;gap:5px;align-items:center}.entry-actions button{padding:5px 8px;font-size:12px}
+.candidates{margin-top:12px}.cand{display:flex;align-items:center;gap:7px;padding:9px;margin-top:6px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}.cand.new{border-color:var(--good)}.cand-text{flex:1;overflow:hidden;text-overflow:ellipsis}.cand-price{font-weight:700;white-space:nowrap}.badge{font-size:10px;padding:3px 5px;border-radius:5px;background:var(--good);color:white}
+.billbox{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}.billrow{display:flex;justify-content:space-between;padding:4px 0}.billrow.total{font-weight:800;font-size:17px;border-top:1px solid var(--line);margin-top:5px;padding-top:9px}
+.stat-grid{display:flex;gap:10px;flex-wrap:wrap}.stat-card{flex:1;min-width:140px;padding:14px}.num{font-size:21px;font-weight:800;color:var(--teal)}.lbl{font-size:12px;color:var(--dim);margin-top:2px}.shop-grid{display:flex;flex-wrap:wrap;gap:10px}.shop-card{flex:1;min-width:160px;padding:13px}.shop-card .name{font-weight:700}.shop-card .stat{font-size:12px;color:var(--dim);margin-top:3px}.month-card{display:flex;justify-content:space-between;padding:14px;margin-bottom:9px}.month-card .count{display:block;font-size:12px;color:var(--dim);margin-top:3px}.recent{overflow:hidden}.recent div{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px}.recent div:last-child{border:0}
+.modal{display:none;position:fixed;inset:0;background:#0008;z-index:20;align-items:flex-end;justify-content:center}.modal.open{display:flex}.modalbox{width:min(700px,100%);background:var(--card);border-radius:16px 16px 0 0;padding:18px;max-height:90vh;overflow:auto}.modal h3{margin-top:0}
+.notice{padding:10px;border-radius:8px;background:color-mix(in srgb,var(--coral) 15%,transparent);font-size:13px;margin-top:10px}
 </style>
 </head>
 <body>
 <header><h1>Price Log</h1><p>Track what things cost at different shops, from scanned bills or by hand.</p></header>
 <main>
 <div class="card">
- <div class="row"><div class="field"><label for="item">Item</label><input id="item" placeholder="e.g. Rice 5kg"></div><div class="field"><label for="category">Category</label><input id="category" list="categoryList" placeholder="e.g. Groceries"><datalist id="categoryList"></datalist></div></div>
- <div class="row" style="margin-top:10px"><div class="field"><label for="shop">Shop</label><input id="shop" placeholder="e.g. STO"></div><div class="field"><label for="price">Price (MVR)</label><input id="price" type="number" step="0.01" inputmode="decimal" placeholder="0.00"></div></div>
- <div class="row" style="margin-top:10px"><div class="field"><label for="date">Date</label><input id="date" type="date"></div></div>
- <div class="btnrow"><button class="primary" id="addBtn">Add entry</button><button class="ghost" id="scanBtn">Scan a bill</button></div>
- <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none">
- <div class="scan-status" id="scanStatus"></div>
- <img id="scanPreview" class="scan-preview" alt="Bill photo">
- <div class="candidates" id="candidates"></div>
+<div class="row">
+<div class="field"><label>Item</label><input id="item" placeholder="e.g. Rice 5kg"></div>
+<div class="field"><label>Category</label><input id="category" list="categoryList" placeholder="e.g. Groceries"><datalist id="categoryList"></datalist></div>
 </div>
-<div class="tabs"><button class="tab active" id="tabDash">Dashboard</button><button class="tab" id="tabItems">Items</button><button class="tab" id="tabShops">Shops</button><button class="tab" id="tabSpending">Spending</button></div>
-<div id="panelDash"><div id="dash"></div></div><div id="panelItems" style="display:none"><div id="list"></div></div><div id="panelShops" style="display:none"><div id="shopList"></div></div><div id="panelSpending" style="display:none"><div id="spendingList"></div></div>
+<div class="row" style="margin-top:10px">
+<div class="field"><label>Shop</label><input id="shop" placeholder="e.g. STO"></div>
+<div class="field"><label>Price (MVR)</label><input id="price" type="number" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+</div>
+<div class="row" style="margin-top:10px"><div class="field"><label>Date</label><input id="date" type="date"></div></div>
+<div class="btnrow"><button class="primary" id="addBtn">Add entry</button><button class="ghost" id="editBtn">Edit</button></div>
+<div class="btnrow"><button class="ghost" id="scanBtn">📷 Scan a bill</button><button class="ghost" id="uploadBtn">🖼 Upload bill</button></div>
+<input id="cameraInput" type="file" accept="image/*" capture="environment" hidden>
+<input id="uploadInput" type="file" accept="image/*" hidden>
+<div class="status" id="status"></div><img id="preview" class="preview" alt="Receipt preview">
+<div id="billInfo"></div><div id="candidates" class="candidates"></div>
+</div>
+
+<div class="tabs"><button class="tab active" data-tab="dash">Dashboard</button><button class="tab" data-tab="items">Items</button><button class="tab" data-tab="shops">Shops</button><button class="tab" data-tab="spending">Spending</button></div>
+<section id="dash"></section><section id="items" style="display:none"></section><section id="shops" style="display:none"></section><section id="spending" style="display:none"></section>
 </main>
-<div class="modal" id="editModal"><div class="modal-card"><div class="modal-title">Edit scanned item</div><div class="row"><div class="field"><label>Item</label><input id="editItem"></div><div class="field"><label>Shop</label><input id="editShop"></div></div><div class="row" style="margin-top:10px"><div class="field"><label>Price (MVR)</label><input id="editPrice" type="number" step="0.01" inputmode="decimal"></div><div class="field"><label>Date</label><input id="editDate" type="date"></div></div><div class="modal-actions"><button class="ghost" id="cancelEdit">Cancel</button><button class="primary" id="saveEdit">Save</button></div></div></div>
+
+<div id="modal" class="modal"><div class="modalbox"><h3 id="modalTitle">Edit entry</h3><div class="row"><div class="field"><label>Item</label><input id="mItem"></div><div class="field"><label>Category</label><input id="mCat"></div></div><div class="row" style="margin-top:10px"><div class="field"><label>Shop</label><input id="mShop"></div><div class="field"><label>Price</label><input id="mPrice" type="number" step=".01"></div></div><div class="field" style="margin-top:10px"><label>Date</label><input id="mDate" type="date"></div><div class="btnrow"><button class="primary" id="saveEdit">Save changes</button><button class="ghost" id="cancelEdit">Cancel</button></div></div></div>
+
 <script>
-(function(){
-'use strict';
-const LS_KEY='price-log-entries';
-const $=s=>document.querySelector(s);let entries=[];let scanEntries=[];let editingScan=-1;let editingEntry=-1;
-function esc(s){return String(s==null?'':s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\\':'&#92;'}[c]));}
-function money(n){return Number(n||0).toFixed(2)}
-function load(){try{const r=localStorage.getItem(LS_KEY);entries=r?JSON.parse(r):[];if(!Array.isArray(entries))entries=[]}catch(e){entries=[]}}
-function save(){try{localStorage.setItem(LS_KEY,JSON.stringify(entries))}catch(e){}}
-function render(){renderItems();renderShops();renderSpending();renderDashboard();renderCategoryList()}
-function renderCategoryList(){$('#categoryList').innerHTML=[...new Set(entries.map(e=>(e.category||'').trim()).filter(Boolean))].sort().map(c=>`<option value="${esc(c)}">`).join('')}
-function renderDashboard(){const box=$('#dash');if(!entries.length){box.innerHTML='<div class="empty">No entries yet. Add one or scan a bill to see your dashboard.</div>';return}const now=new Date(),cur=now.toISOString().slice(0,7),months={};entries.forEach(e=>{const k=(e.date||'').slice(0,7);if(k)months[k]=(months[k]||0)+Number(e.price||0)});const total=months[cur]||0;const distinct=new Set(entries.map(e=>e.item.trim().toLowerCase())).size;const byItem={};entries.forEach(e=>(byItem[e.item.trim().toLowerCase()]=byItem[e.item.trim().toLowerCase()]||[]).push(e));const wins={};Object.values(byItem).forEach(rows=>{const min=Math.min(...rows.map(r=>Number(r.price)));new Set(rows.filter(r=>Number(r.price)===min).map(r=>r.shop.trim())).forEach(s=>wins[s]=(wins[s]||0)+1)});const best=Object.keys(wins).sort((a,b)=>wins[b]-wins[a])[0]||'—';const keys=[];for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);keys.push(d.toISOString().slice(0,7))}const vals=keys.map(k=>months[k]||0),max=Math.max(...vals,1),barW=40,gap=14,h0=90,w=keys.length*(barW+gap);const bars=keys.map((k,i)=>{const h=Math.max(2,(vals[i]/max)*h0),x=i*(barW+gap),lab=new Date(+k.slice(0,4),+k.slice(5,7)-1,1).toLocaleDateString('en-US',{month:'short'});return `<rect x="${x}" y="${h0-h}" width="${barW}" height="${h}" rx="4" fill="${k===cur?'var(--coral)':'var(--teal)'}" opacity="${k===cur?1:.55}"/><text x="${x+barW/2}" y="${h0+16}" font-size="10" text-anchor="middle" fill="var(--teal-dim)" font-family="-apple-system,sans-serif">${lab}</text>`}).join('');const recent=entries.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,5);box.innerHTML=`<div class="stat-grid"><div class="stat-card"><div class="num">MVR ${money(total)}</div><div class="lbl">Spent this month</div></div><div class="stat-card"><div class="num">${distinct}</div><div class="lbl">Items tracked</div></div><div class="stat-card"><div class="num">${esc(best)}</div><div class="lbl">Best value shop</div></div></div><div class="dash-section-title">Last 6 months</div><div class="chart-card"><svg viewBox="0 0 ${w} ${h0+22}" style="width:100%;height:${h0+22}px">${bars}</svg></div><div class="dash-section-title">Recent entries</div><div class="recent">${recent.map(e=>`<div class="row-item"><span>${esc(e.item)} <span class="who">· ${esc(e.shop)}</span></span><span>MVR ${money(e.price)}</span></div>`).join('')}</div>`}
-function renderSpending(){const box=$('#spendingList');if(!entries.length){box.innerHTML='<div class="empty">No entries yet.</div>';return}const m={};entries.forEach(e=>{const k=(e.date||'').slice(0,7);if(!k)return;(m[k]=m[k]||{total:0,count:0}).total+=Number(e.price||0);m[k].count++});const cur=new Date().toISOString().slice(0,7);box.innerHTML=Object.keys(m).sort((a,b)=>b.localeCompare(a)).map(k=>{const[y,mo]=k.split('-'),lab=new Date(+y,+mo-1,1).toLocaleDateString('en-US',{month:'long',year:'numeric'}),d=m[k];return `<div class="month-card ${k===cur?'current':''}"><div><span class="label">${lab}${k===cur?'<span class="tag">THIS MONTH</span>':''}</span><span class="count">${d.count} entr${d.count===1?'y':'ies'}</span></div><div class="amount">MVR ${money(d.total)}</div></div>`}).join('')}
-function renderShops(){const box=$('#shopList');if(!entries.length){box.innerHTML='<div class="empty">No entries yet.</div>';return}const byItem={},items={},wins={};entries.forEach(e=>(byItem[e.item.trim().toLowerCase()]=byItem[e.item.trim().toLowerCase()]||[]).push(e));Object.values(byItem).forEach(rows=>{const min=Math.min(...rows.map(r=>Number(r.price))),seen=new Set();rows.forEach(r=>{const s=r.shop.trim();if(!seen.has(s)){items[s]=(items[s]||0)+1;seen.add(s)}});new Set(rows.filter(r=>Number(r.price)===min).map(r=>r.shop.trim())).forEach(s=>wins[s]=(wins[s]||0)+1)});const shops=Object.keys(items).sort((a,b)=>items[b]-items[a]),top=items[shops[0]];box.innerHTML=`<div class="shop-grid">${shops.map(s=>`<div class="shop-card ${items[s]===top?'top':''}"><div class="name">${esc(s)}${items[s]===top?'<span class="badge">MOST ITEMS</span>':''}</div><div class="stat">${items[s]} item${items[s]===1?'':'s'} logged</div><div class="stat">Cheapest on ${wins[s]||0} item${(wins[s]||0)===1?'':'s'}</div></div>`).join('')}</div>`}
-function renderItems(){
- const list=$('#list');
- if(!entries.length){list.innerHTML='<div class="empty">No entries yet. Add one above, or scan a bill to get started.</div>';return}
- const cats={};
- entries.forEach((e,i)=>{
-   const c=(e.category||'Uncategorized').trim()||'Uncategorized';
-   const k=e.item.trim().toLowerCase();
-   cats[c]=cats[c]||{};
-   cats[c][k]=cats[c][k]||[];
-   cats[c][k].push({...e,idx:i});
- });
- const names=Object.keys(cats).sort((a,b)=>a==='Uncategorized'?1:b==='Uncategorized'?-1:a.localeCompare(b));
- list.innerHTML=names.map(cat=>{
-   const keys=Object.keys(cats[cat]).sort();
-   const groups=keys.map(k=>{
-     const rows=cats[cat][k].slice().sort((a,b)=>Number(a.price)-Number(b.price));
-     const min=Number(rows[0].price), label=rows[0].item;
-     const rowHtml=rows.map(r=>`<div class="entry ${Number(r.price)===min?'cheapest':''}"><div><span class="shop">${esc(r.shop)}</span><span class="date">${esc(r.date)}</span></div><div class="entry-actions"><span class="price">MVR ${money(r.price)}</span><button class="mini" data-edit-entry="${r.idx}">Edit</button><button class="del" data-del="${r.idx}" title="Delete">×</button></div></div>`).join('');
-     return `<div class="item-group"><div class="item-head">${esc(label)}</div>${rowHtml}</div>`;
-   }).join('');
-   return `<div class="category-head">${esc(cat)}</div>${groups}`;
- }).join('');
- list.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{entries.splice(+b.dataset.del,1);save();render()});
- list.querySelectorAll('[data-edit-entry]').forEach(b=>b.onclick=()=>openEntryEdit(+b.dataset.editEntry));
+"use strict";
+const KEY="price-log-entries-v1";
+let entries=[], scanEntries=[], currentEdit=-1, currentBill=null;
+
+const $=id=>document.getElementById(id);
+function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function load(){try{entries=JSON.parse(localStorage.getItem(KEY)||"[]");if(!Array.isArray(entries))entries=[]}catch(e){entries=[]}}
+function save(){localStorage.setItem(KEY,JSON.stringify(entries))}
+function today(){return new Date().toISOString().slice(0,10)}
+$("date").value=today();
+
+function render(){
+ renderItems();renderShops();renderSpending();renderDash();renderCats();
 }
-function addManual(){const item=$('#item').value.trim(),category=$('#category').value.trim(),shop=$('#shop').value.trim(),price=parseFloat($('#price').value),date=$('#date').value||new Date().toISOString().slice(0,10);if(!item||!shop||isNaN(price)){$('#scanStatus').textContent='Fill in item, shop and price to add an entry.';return}entries.push({item,category,shop,price,date});save();render();$('#item').value='';$('#shop').value='';$('#price').value='';$('#scanStatus').textContent='Added.'}
-function openEntryEdit(i){const e=entries[i];editingEntry=i;$('#editItem').value=e.item;$('#editShop').value=e.shop;$('#editPrice').value=e.price;$('#editDate').value=e.date;$('#editModal').classList.add('show')}
-function openScanEdit(i){const c=scanEntries[i];editingScan=i;$('#editItem').value=c.item;$('#editShop').value=c.shop;$('#editPrice').value=c.price;$('#editDate').value=c.date;$('#editModal').classList.add('show')}
-$('#cancelEdit').onclick=()=>{$('#editModal').classList.remove('show');editingScan=-1;editingEntry=-1};$('#saveEdit').onclick=()=>{const item=$('#editItem').value.trim(),shop=$('#editShop').value.trim(),price=parseFloat($('#editPrice').value),date=$('#editDate').value||new Date().toISOString().slice(0,10);if(!item||!shop||isNaN(price))return;if(editingScan>=0){Object.assign(scanEntries[editingScan],{item,shop,price,date});renderCandidates()}else if(editingEntry>=0){Object.assign(entries[editingEntry],{item,shop,price,date});save();render()}$('#editModal').classList.remove('show');editingScan=-1;editingEntry=-1}
-function renderCandidates(){const box=$('#candidates');if(!scanEntries.length){box.innerHTML='';return}const gst=scanEntries.billGST!=null?scanEntries.billGST:'';box.innerHTML=`<div style="font-family:-apple-system,sans-serif;font-size:12px;color:var(--teal-dim);margin-bottom:4px">Found ${scanEntries.length} line${scanEntries.length===1?'':'s'} with a price. Review before adding:</div><div class="scan-actions"><button class="primary" id="addAllBtn">Add all</button><button class="ghost" id="rescanBtn">Re-scan</button><button class="ghost" id="clearScanBtn">Clear</button></div>${scanEntries.map((c,i)=>`<div class="cand ${c.added?'added':''}"><span class="cand-text">${esc(c.item)} <span style="color:var(--teal-dim)">· ${esc(c.shop)}</span></span><span class="cand-price">MVR ${money(c.price)}</span><button class="ghost edit-scan" data-edit-scan="${i}">Edit</button><button class="ghost" data-add="${i}" ${c.added?'disabled':''}>${c.added?'Added':'Add'}</button></div>`).join('')}<div class="scan-summary"><div class="summary-title">Bill totals</div><div class="summary-grid"><div class="field"><label>Subtotal (MVR)</label><input id="billSubtotal" type="number" step="0.01" value="${scanEntries.billSubtotal!=null?money(scanEntries.billSubtotal):''}"></div><div class="field"><label>GST / Tax (MVR)</label><input id="billGST" type="number" step="0.01" value="${scanEntries.billGST!=null?money(scanEntries.billGST):''}"></div><div class="field"><label>Total (MVR)</label><input id="billTotal" type="number" step="0.01" value="${scanEntries.billTotal!=null?money(scanEntries.billTotal):''}"></div></div><div class="bill-total" style="margin-top:8px"><span>GST / Tax</span><strong id="gstDisplay">MVR ${scanEntries.billGST!=null?money(scanEntries.billGST):'0.00'}</strong></div><div class="bill-total total"><span>Total Amount</span><strong id="totalDisplay">MVR ${scanEntries.billTotal!=null?money(scanEntries.billTotal):'0.00'}</strong></div></div>`;box.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>addCandidate(+b.dataset.add));box.querySelectorAll('[data-edit-scan]').forEach(b=>b.onclick=()=>openScanEdit(+b.dataset.editScan));$('#addAllBtn').onclick=()=>{scanEntries.forEach((c,i)=>{if(!c.added)addCandidate(i)})};$('#rescanBtn').onclick=()=>$('#fileInput').click();$('#clearScanBtn').onclick=clearScan;['billSubtotal','billGST','billTotal'].forEach(id=>{const el=$('#'+id);el.oninput=()=>{if(id==='billSubtotal')scanEntries.billSubtotal=parseFloat(el.value)||0;if(id==='billGST')scanEntries.billGST=parseFloat(el.value)||0;if(id==='billTotal')scanEntries.billTotal=parseFloat(el.value)||0;$('#gstDisplay').textContent='MVR '+money(scanEntries.billGST);$('#totalDisplay').textContent='MVR '+money(scanEntries.billTotal)}})}
-function addCandidate(i){const c=scanEntries[i];if(!c||c.added)return;entries.push({item:c.item,category:$('#category').value.trim(),shop:c.shop,price:Number(c.price),date:c.date});c.added=true;save();render();renderCandidates();$('#scanStatus').textContent='Added '+c.item}
-function clearScan(){scanEntries=[];$('#candidates').innerHTML='';$('#scanPreview').style.display='none';$('#scanPreview').removeAttribute('src');$('#scanStatus').textContent='';$('#fileInput').value=''}
-function ensureTesseract(){return new Promise((resolve,reject)=>{if(window.Tesseract){resolve();return}const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';s.onload=resolve;s.onerror=reject;document.head.appendChild(s)})}
-function preprocess(file){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{const max=2200,scale=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight)),w=Math.max(1,Math.round(img.naturalWidth*scale)),h=Math.max(1,Math.round(img.naturalHeight*scale));const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(img,0,0,w,h);const d=x.getImageData(0,0,w,h),p=d.data;for(let i=0;i<p.length;i+=4){let g=.299*p[i]+.587*p[i+1]+.114*p[i+2];g=(g-128)*1.35+128;g=Math.max(0,Math.min(255,g));p[i]=p[i+1]=p[i+2]=g}x.putImageData(d,0,0);c.toBlob(b=>b?resolve(b):reject(new Error('preprocess failed')),'image/jpeg',.92)};img.onerror=reject;img.src=URL.createObjectURL(file)})}
-function guessShop(lines){const bad=/^(date|time|item|qty|total|subtotal|sub\s*total|register|cashier|type|tax|gst|invoice|bill|customer|tin|phone|amount|received|balance|print|powered|manager)/i;for(const l of lines){const t=l.trim();if(t.length>5&&/[A-Za-z]/.test(t)&&!bad.test(t)&&!/\d{5,}/.test(t))return t}return $('#shop').value.trim()||'Unknown shop'}
-function guessDate(text){let m=text.match(/(?:bill\s*date|date)\s*[:.]?\s*(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})/i)||text.match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})/);if(!m)return $('#date').value||new Date().toISOString().slice(0,10);let y=m[3];if(y.length===2)y='20'+y;return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`}
-function parseMoney(s){const n=parseFloat(String(s).replace(/,/g,''));return isFinite(n)?n:null}
-function extractTotals(text){const clean=text.replace(/,/g,'');let subtotal=null,gst=null,total=null;let m=clean.match(/(?:sub\s*total)\s*[:=]?\s*(\d+\.\d{2})/i);if(m)subtotal=parseMoney(m[1]);m=clean.match(/(?:total\s*gst|gst\s*(?:\/|and)?\s*tax|tax)\s*[:=]?\s*(\d+\.\d{2})/i);if(m)gst=parseMoney(m[1]);m=clean.match(/(?:total\s*amount|grand\s*total|total)\s*[:=]?\s*(\d+\.\d{2})/i);if(m)total=parseMoney(m[1]);return{subtotal,gst,total}}
-function parseReceipt(text,shop,date){const lines=text.split(/\r?\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);const noise=/^(sub\s*total|subtotal|total|discount|total\s*gst|gst|tax|plastic|received|balance|amount|cash|change|payment|visa|master|customer|bill\s*(no|date)|tin|phone|print|powered|manager|tax\s*invoice)/i;const found=[];for(let i=0;i<lines.length;i++){let line=lines[i];if(noise.test(line))continue;let matches=[...line.matchAll(/(\d{1,4}(?:[.,]\d{2}))/g)];if(!matches.length)continue;let nums=matches.map(m=>({v:parseMoney(m[1].replace(',','.')),idx:m.index})).filter(x=>x.v!=null&&x.v>0&&x.v<100000);if(!nums.length)continue;let item='';let price=null;
- // Receipt rows normally contain qty, A.Rate, S.Rate, Amount, GST. Use the item text immediately before the numeric columns and choose S.Rate/Amount based on qty.
- const first=nums[0];let prefix=line.slice(0,first.idx).trim();prefix=prefix.replace(/^\d+\s*/,'').trim();
- if(prefix.length>2&&/[A-Za-z]/.test(prefix))item=prefix;
- if(nums.length>=2){ // for a row like "1.00 8.00 72.00 72.00 5.33", price is the second numeric value when qty is first
-   if(/^\d+(?:[.,]\d{2})?$/.test(prefix)===false){
-     // if first numeric is quantity, second is rate
-     price=nums.length>=2?nums[1].v:nums[0].v;
-   }
+function renderCats(){$("categoryList").innerHTML=[...new Set(entries.map(e=>e.category).filter(Boolean))].sort().map(x=>`<option value="${esc(x)}">`).join("")}
+
+$("addBtn").onclick=()=>{
+ const item=$("item").value.trim(),shop=$("shop").value.trim(),price=parseFloat($("price").value),date=$("date").value||today(),category=$("category").value.trim();
+ if(!item||!shop||!Number.isFinite(price)){ $("status").textContent="Fill in item, shop and price.";return}
+ entries.push({item,category,shop,price,date});
+ save();render();$("item").value="";$("shop").value="";$("price").value="";$("status").textContent="Added.";
+};
+$("editBtn").onclick=()=>openEdit(-1,true);
+
+function openEdit(i,fromForm=false){
+ if(fromForm){
+  if(!$("item").value.trim()){$("status").textContent="Enter an item first, or select Edit beside an existing entry.";return}
+  currentEdit=-1;$("mItem").value=$("item").value;$("mCat").value=$("category").value;$("mShop").value=$("shop").value;$("mPrice").value=$("price").value;$("mDate").value=$("date").value||today();
+ }else{
+  const e=entries[i];if(!e)return;currentEdit=i;
+  $("mItem").value=e.item;$("mCat").value=e.category||"";$("mShop").value=e.shop;$("mPrice").value=e.price;$("mDate").value=e.date||today();
  }
- // OCR may put item on a line above the numbers.
- if(!item){for(let j=i-1;j>=Math.max(0,i-2);j--){const p=lines[j];if(!noise.test(p)&&/[A-Za-z]/.test(p)&&!/(?:\d+[.,]\d{2}){2,}/.test(p)){item=p.replace(/^\d+\s*/,'').trim();break}}}
- if(!item)continue;
- if(price==null)price=nums[0].v;
- // Avoid totals and GST values masquerading as products.
- if(/\b(?:gst|tax|total|subtotal|discount)\b/i.test(item))continue;
- // Clean common OCR column debris.
- item=item.replace(/[|=*_]+/g,' ').replace(/\s{2,}/g,' ').trim();
- if(item.length<2)continue;
- found.push({shop,item,price,date,added:false});
+ $("modal").classList.add("open");
+}
+$("cancelEdit").onclick=()=>$("modal").classList.remove("open");
+$("saveEdit").onclick=()=>{
+ const e={item:$("mItem").value.trim(),category:$("mCat").value.trim(),shop:$("mShop").value.trim(),price:parseFloat($("mPrice").value),date:$("mDate").value||today()};
+ if(!e.item||!e.shop||!Number.isFinite(e.price))return alert("Please complete item, shop and price.");
+ if(currentEdit>=0)entries[currentEdit]=e; else {$("item").value=e.item;$("category").value=e.category;$("shop").value=e.shop;$("price").value=e.price;$("date").value=e.date}
+ save();render();$("modal").classList.remove("open");
+};
+
+function renderItems(){
+ if(!entries.length){$("items").innerHTML='<div class="empty">No entries yet.</div>';return}
+ const cats={};
+ entries.forEach((e,i)=>{const c=e.category||"Uncategorized";const k=e.item.trim().toLowerCase();(cats[c]??={});(cats[c][k]??=[]).push({...e,i})});
+ $("items").innerHTML=Object.keys(cats).sort().map(c=>{
+  return `<div class="category-head">${esc(c)}</div>`+Object.keys(cats[c]).sort().map(k=>{
+   const rows=cats[c][k].sort((a,b)=>a.price-b.price),label=rows[0].item,min=rows[0].price;
+   return `<div class="item-group"><div class="item-head">${esc(label)}</div>${rows.map(r=>`<div class="entry"><div><b>${esc(r.shop)}</b> <span class="date">${esc(r.date)}</span></div><div class="entry-actions"><span class="price" style="color:${r.price===min?'var(--good)':'inherit'}">MVR ${r.price.toFixed(2)}</span><button class="ghost" onclick="openEdit(${r.i})">Edit</button><button class="danger" onclick="delEntry(${r.i})">×</button></div></div>`).join("")}</div>`
+  }).join("")
+ }).join("");
+}
+function delEntry(i){if(confirm("Delete this entry?")){entries.splice(i,1);save();render()}}
+
+function renderShops(){
+ if(!entries.length){$("shops").innerHTML='<div class="empty">No entries yet.</div>';return}
+ const shops={};entries.forEach(e=>{shops[e.shop]=(shops[e.shop]||0)+1});
+ $("shops").innerHTML='<div class="shop-grid">'+Object.keys(shops).sort().map(s=>`<div class="shop-card"><div class="name">${esc(s)}</div><div class="stat">${shops[s]} entries logged</div></div>`).join("")+'</div>';
+}
+function renderSpending(){
+ const m={};entries.forEach(e=>{const k=(e.date||"").slice(0,7);if(k)(m[k]??={total:0,count:0}),m[k].total+=e.price,m[k].count++});
+ $("spending").innerHTML=Object.keys(m).sort().reverse().map(k=>{const [y,mo]=k.split("-");const label=new Date(+y,+mo-1,1).toLocaleDateString("en-US",{month:"long",year:"numeric"});return `<div class="month-card"><div><b>${label}</b><span class="count">${m[k].count} entries</span></div><b>MVR ${m[k].total.toFixed(2)}</b></div>`}).join("")||'<div class="empty">No entries yet.</div>';
+}
+function renderDash(){
+ const now=today().slice(0,7),total=entries.filter(e=>e.date?.slice(0,7)===now).reduce((a,e)=>a+e.price,0),items=new Set(entries.map(e=>e.item.toLowerCase())).size;
+ const recent=entries.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,5);
+ $("dash").innerHTML=`<div class="stat-grid"><div class="stat-card"><div class="num">MVR ${total.toFixed(2)}</div><div class="lbl">Spent this month</div></div><div class="stat-card"><div class="num">${items}</div><div class="lbl">Items tracked</div></div><div class="stat-card"><div class="num">${entries.length}</div><div class="lbl">Entries</div></div></div><h3>Recent entries</h3><div class="recent">${recent.map(e=>`<div><span>${esc(e.item)} · ${esc(e.shop)}</span><b>MVR ${e.price.toFixed(2)}</b></div>`).join("")||'<div>No entries yet.</div>'}</div>`;
+}
+
+document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
+ document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");
+ ["dash","items","shops","spending"].forEach(x=>$(x).style.display=x===t.dataset.tab?"":"none");
+});
+
+$("scanBtn").onclick=()=>$("cameraInput").click();
+$("uploadBtn").onclick=()=>$("uploadInput").click();
+$("cameraInput").onchange=e=>handleFile(e.target.files[0]);
+$("uploadInput").onchange=e=>handleFile(e.target.files[0]);
+
+function moneyNumbers(s){return [...s.matchAll(/(?:MVR\s*)?(\d{1,5}(?:[.,]\d{2}))/gi)].map(m=>parseFloat(m[1].replace(",",".")))}
+function guessDate(text){const m=text.match(/\b(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})\b/);if(!m)return today();let y=m[3];if(y.length===2)y="20"+y;return `${y}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`}
+function guessShop(lines){const bad=/^(date|time|invoice|receipt|subtotal|total|cash|change|tax|gst|qty|item|description|amount)/i;return lines.find(x=>x.length>3&&!bad.test(x)&&/[A-Za-z]/.test(x))||$("shop").value.trim()||"Unknown shop"}
+
+function duplicateKey(c){
+ return `${(c.shop||"").toLowerCase()}|${c.date||""}|${(c.item||"").toLowerCase().replace(/\W/g,"")}|${Number(c.price).toFixed(2)}`
+}
+function alreadyExists(c){
+ return entries.some(e=>duplicateKey(e)===duplicateKey(c));
+}
+
+function parseReceipt(text){
+ const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ const shop=guessShop(lines),date=guessDate(text);
+ let subtotal=null,tax=null,total=null;
+ for(const line of lines){
+  const low=line.toLowerCase(), nums=moneyNumbers(line);if(!nums.length)continue;
+  if(/sub\s*total/.test(low))subtotal=nums[nums.length-1];
+  else if(/\b(gst|tax|vat)\b/.test(low))tax=nums[nums.length-1];
+  else if(/\btotal\b/.test(low)&&!/subtotal/.test(low))total=nums[nums.length-1];
  }
- // Remove obvious duplicates caused by the OCR pass.
- const out=[],seen=new Set();for(const c of found){const k=c.item.toLowerCase()+'|'+c.price.toFixed(2);if(!seen.has(k)){seen.add(k);out.push(c)}}return out}
-async function scanFile(file){const status=$('#scanStatus');status.textContent='Preparing receipt image…';const preview=$('#scanPreview');preview.src=URL.createObjectURL(file);preview.style.display='block';try{await ensureTesseract();const processed=await preprocess(file);status.textContent='Reading receipt…';const result=await Tesseract.recognize(processed,'eng',{logger:m=>{if(m.status==='recognizing text'&&m.progress)status.textContent=`Reading receipt… ${Math.round(m.progress*100)}%`}});const text=result.data.text||'';const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const shop=guessShop(lines);const date=guessDate(text);const totals=extractTotals(text);let found=parseReceipt(text,shop,date);
- // If structured parsing is weak, run a second OCR segmentation pass on the original image.
- if(found.length<2){status.textContent='Trying a second scan…';const r2=await Tesseract.recognize(file,'eng',{logger:m=>{if(m.status==='recognizing text'&&m.progress)status.textContent=`Trying second scan… ${Math.round(m.progress*100)}%`}});found=parseReceipt(r2.data.text||text,shop,date)}
- scanEntries=found;scanEntries.billSubtotal=totals.subtotal;scanEntries.billGST=totals.gst;scanEntries.billTotal=totals.total;
- if(!scanEntries.length){status.textContent='The receipt photo was loaded, but no clear item rows were detected. Use Edit/manual entry, or try another photo with the receipt flat and well lit.';renderCandidates();return}
- status.textContent=`Found ${scanEntries.length} item${scanEntries.length===1?'':'s'}. Review the results before adding.`;renderCandidates();
- }catch(e){console.error(e);status.textContent='Receipt reading failed. The photo is still available below. Try scanning again or enter the items manually.'}}
-$('#addBtn').onclick=addManual;$('#scanBtn').onclick=()=>$('#fileInput').click();$('#fileInput').onchange=e=>{const f=e.target.files&&e.target.files[0];if(f)scanFile(f)};
-function showTab(name){const map={dash:['tabDash','panelDash'],items:['tabItems','panelItems'],shops:['tabShops','panelShops'],spending:['tabSpending','panelSpending']};Object.keys(map).forEach(k=>{$('#'+map[k][0]).classList.toggle('active',k===name);$('#'+map[k][1]).style.display=k===name?'':'none'})}
-$('#tabDash').onclick=()=>showTab('dash');$('#tabItems').onclick=()=>showTab('items');$('#tabShops').onclick=()=>showTab('shops');$('#tabSpending').onclick=()=>showTab('spending');$('#date').value=new Date().toISOString().slice(0,10);load();render();
-})();
+ const noise=/^(subtotal|total|gst|tax|vat|cash|change|balance|amount|payment|visa|master|debit|credit|tender|discount|rounding|thank|date|time|invoice|receipt|qty|quantity|description)$/i;
+ const found=[];
+ for(let i=0;i<lines.length;i++){
+  const line=lines[i];
+  if(/subtotal|gst|tax|vat|total|cash|change|balance|payment|visa|master|discount/i.test(line))continue;
+  const nums=moneyNumbers(line);if(!nums.length)continue;
+  const m=line.match(/(\d{1,5}(?:[.,]\d{2}))/);
+  if(!m)continue;
+  let name=line.slice(0,m.index).replace(/^\s*\d+\s*[xX×]?\s*/,"").replace(/[|_\-–—:]+$/,"").trim();
+  let price=nums[nums.length-1];
+  const qtyMatch=line.match(/^\s*(\d+(?:\.\d+)?)\s*[xX×]\s*/);
+  if(qtyMatch&&nums.length>=2) price=nums[nums.length-1];
+  if(!name&&i>0){const p=lines[i-1];if(!moneyNumbers(p).length&&!noise.test(p))name=p}
+  if(name&&name.length>1&&price>0&&price<100000&&!noise.test(name))found.push({item:name,shop,date,price,added:alreadyExists({item:name,shop,date,price})});
+ }
+ return {shop,date,subtotal,tax,total,items:dedupe(found)};
+}
+function dedupe(a){const seen=new Set();return a.filter(x=>{const k=duplicateKey(x);if(seen.has(k))return false;seen.add(k);return true})}
+
+function renderScan(){
+ const c=$("candidates");if(!scanEntries.length){c.innerHTML="";return}
+ const newCount=scanEntries.filter(x=>!x.added).length;
+ c.innerHTML=`<div style="font-size:12px;color:var(--dim);margin-bottom:6px">Found ${scanEntries.length} priced item(s). ${newCount?newCount+" new/missing item(s)":"All detected items are already recorded."}</div>
+ ${newCount?'<button class="primary" id="addMissing">Add missing items</button>':''}
+ ${scanEntries.map((x,i)=>`<div class="cand ${x.added?'':'new'}"><span class="cand-text">${esc(x.item)}<br><small style="color:var(--dim)">${esc(x.shop)}</small></span>${x.added?'<span class="badge">Already added</span>':""}<span class="cand-price">MVR ${x.price.toFixed(2)}</span><button class="ghost small" onclick="editCandidate(${i})">${x.added?"View/Edit":"Edit"}</button>${x.added?"":`<button class="ghost small" onclick="addCandidate(${i})">Add</button>`}</div>`).join("")}`;
+ if($("addMissing"))$("addMissing").onclick=()=>scanEntries.forEach((x,i)=>{if(!x.added)addCandidate(i)});
+}
+function addCandidate(i){const x=scanEntries[i];if(x.added)return;entries.push({item:x.item,category:$("category").value.trim(),shop:x.shop,price:x.price,date:x.date});x.added=true;save();render();renderScan()}
+function editCandidate(i){
+ const x=scanEntries[i];currentEdit=-1;$("mItem").value=x.item;$("mCat").value=$("category").value;$("mShop").value=x.shop;$("mPrice").value=x.price;$("mDate").value=x.date;$("modal").classList.add("open");
+ $("saveEdit").onclick=()=>{x.item=$("mItem").value.trim();x.shop=$("mShop").value.trim();x.price=parseFloat($("mPrice").value);x.date=$("mDate").value||today();x.category=$("mCat").value.trim();x.added=alreadyExists(x);if(!x.added){entries.push({item:x.item,category:x.category,shop:x.shop,price:x.price,date:x.date});x.added=true;save();render()}$("modal").classList.remove("open");renderScan()}
+}
+
+async function loadOCR(){
+ if(window.Tesseract)return window.Tesseract;
+ return new Promise((resolve,reject)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";s.onload=()=>resolve(window.Tesseract);s.onerror=reject;document.head.appendChild(s)})
+}
+function preprocess(file){
+ return new Promise(resolve=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{const max=2200,scale=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));const c=document.createElement("canvas");c.width=Math.round(img.naturalWidth*scale);c.height=Math.round(img.naturalHeight*scale);const x=c.getContext("2d");x.filter="grayscale(1) contrast(1.35)";x.drawImage(img,0,0,c.width,c.height);c.toBlob(b=>{URL.revokeObjectURL(url);resolve(b||file)},"image/jpeg",.92)};img.src=url})
+}
+async function handleFile(file){
+ if(!file)return;
+ $("status").textContent="Preparing receipt…";$("preview").src=URL.createObjectURL(file);$("preview").style.display="block";scanEntries=[];$("billInfo").innerHTML="";renderScan();
+ try{
+  const T=await loadOCR();$("status").textContent="Reading receipt…";
+  const processed=await preprocess(file);
+  const r=await T.recognize(processed,"eng",{logger:m=>{if(m.status==="recognizing text")$("status").textContent=`Reading receipt… ${Math.round((m.progress||0)*100)}%`}});
+  currentBill=parseReceipt(r.data.text||"");
+  scanEntries=currentBill.items;
+  $("billInfo").innerHTML=`<div class="billbox"><div class="billrow"><span>Shop</span><b>${esc(currentBill.shop)}</b></div><div class="billrow"><span>Date</span><b>${esc(currentBill.date)}</b></div>${currentBill.subtotal!=null?`<div class="billrow"><span>Subtotal</span><b>MVR ${currentBill.subtotal.toFixed(2)}</b></div>`:""}${currentBill.tax!=null?`<div class="billrow"><span>GST / Tax</span><b>MVR ${currentBill.tax.toFixed(2)}</b></div>`:""}${currentBill.total!=null?`<div class="billrow total"><span>Total</span><b>MVR ${currentBill.total.toFixed(2)}</b></div>`:""}</div>`;
+  const dup=scanEntries.length&&scanEntries.every(x=>x.added);
+  $("status").textContent=dup?"Duplicate/previously scanned bill detected. No new items found.":`Read ${scanEntries.length} item(s). Review and add missing items.`;
+  renderScan();
+ }catch(e){console.error(e);$("status").textContent="Receipt could not be read. You can still use Add entry or try another photo."}
+}
+load();render();
 </script>
 </body>
 </html>

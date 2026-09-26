@@ -16,7 +16,21 @@ input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px
 .btnrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}button{font:600 14px -apple-system,sans-serif;border:0;border-radius:8px;padding:11px 15px;cursor:pointer}
 .primary{background:var(--teal);color:var(--paper);flex:1}.ghost{background:transparent;color:var(--teal);border:1px solid var(--teal)}.danger{color:#b33;background:transparent;border:1px solid #b33}.small{padding:7px 10px;font-size:12px}
 .status{font-size:13px;color:var(--dim);margin-top:9px}.preview{display:none;width:100%;max-height:300px;object-fit:contain;margin-top:10px;border:1px solid var(--line);border-radius:8px}
-.tabs{display:flex;gap:8px;overflow:auto;border-bottom:1px solid var(--line);margin:24px 0 14px}.tab{background:none;color:var(--dim);border:0;border-bottom:2px solid transparent;border-radius:0;padding:9px 5px;margin-right:8px;white-space:nowrap}.tab.active{color:var(--ink);border-bottom-color:var(--coral)}
+/* Modern tab navigation */
+.tabs{display:flex;gap:7px;overflow-x:auto;overflow-y:hidden;margin:20px 0 16px;padding:6px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 3px 14px #00000008;scrollbar-width:none;-webkit-overflow-scrolling:touch;position:sticky;top:8px;z-index:10;backdrop-filter:blur(12px)}
+.tabs::-webkit-scrollbar{display:none}
+.tab{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:7px;min-height:44px;padding:8px 12px;background:transparent;color:var(--dim);border:1px solid transparent;border-radius:11px;white-space:nowrap;font:600 12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;transition:all .18s ease;box-shadow:none}
+.tab .tab-icon{font-size:17px;line-height:1}
+.tab .tab-label{line-height:1}
+.tab.active{color:var(--card);background:var(--teal);border-color:var(--teal);box-shadow:0 4px 10px #00000018}
+.tab:active{transform:scale(.97)}
+@media(max-width:520px){
+ .tabs{gap:5px;padding:5px;margin-left:-2px;margin-right:-2px;border-radius:14px;top:5px}
+ .tab{min-width:76px;padding:8px 10px;gap:5px;font-size:11px;flex-direction:column;min-height:48px}
+ .tab .tab-icon{font-size:18px}
+}
+@media(min-width:521px){.tab{min-width:100px}.tab:first-child{min-width:112px}}
+
 .empty{color:var(--dim);font-size:14px;padding:20px 4px}.category-head{font-size:13px;font-weight:700;color:var(--coral);margin:18px 2px 8px}.item-group{overflow:hidden;margin-bottom:12px}.item-head{padding:12px 14px;font-weight:700;border-bottom:1px solid var(--line)}.entry{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:14px}.entry:last-child{border:0}.date{color:var(--dim);font-size:11px}.price{font-weight:700}.entry-actions{display:flex;gap:5px;align-items:center}.entry-actions button{padding:5px 8px;font-size:12px}
 .candidates{margin-top:12px}.cand{display:flex;align-items:center;gap:7px;padding:9px;margin-top:6px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}.cand.new{border-color:var(--good)}.cand-text{flex:1;overflow:hidden;text-overflow:ellipsis}.cand-price{font-weight:700;white-space:nowrap}.badge{font-size:10px;padding:3px 5px;border-radius:5px;background:var(--good);color:white}
 .billbox{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}.billrow{display:flex;justify-content:space-between;padding:4px 0}.billrow.total{font-weight:800;font-size:17px;border-top:1px solid var(--line);margin-top:5px;padding-top:9px}
@@ -44,6 +58,7 @@ input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px
 .compare-shop .shop-name{font-weight:800}
 .compare-items{margin-top:8px;font-size:12px;color:var(--dim)}
 .category-badge{display:inline-block;font-size:10px;padding:3px 6px;border-radius:5px;background:var(--paper);border:1px solid var(--line);color:var(--dim);margin-left:5px;vertical-align:middle}
+.receipt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}.receipt-card{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}.receipt-thumb{width:100%;height:190px;object-fit:cover;background:var(--paper);display:block}.receipt-meta{padding:10px}.receipt-meta b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.receipt-meta small{display:block;color:var(--dim);margin-top:3px}.receipt-actions{display:flex;gap:6px;margin-top:8px}.receipt-actions button{flex:1;padding:7px 8px;font-size:12px}
 </style>
 </head>
 <body>
@@ -72,8 +87,15 @@ input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px
 <div id="billInfo"></div><div id="candidates" class="candidates"></div>
 </div>
 
-<div class="tabs"><button class="tab active" data-tab="dash">Dashboard</button><button class="tab" data-tab="items">Items</button><button class="tab" data-tab="shops">Shops</button><button class="tab" data-tab="spending">Spending</button><button class="tab" data-tab="shopping">Shopping List</button></div>
-<section id="dash"></section><section id="items" style="display:none"></section><section id="shops" style="display:none"></section><section id="spending" style="display:none"></section><section id="shopping" style="display:none"></section>
+<nav class="tabs" aria-label="Price Log sections">
+  <button class="tab active" data-tab="dash" role="tab" aria-selected="true"><span class="tab-icon">⌂</span><span class="tab-label">Overview</span></button>
+  <button class="tab" data-tab="items" role="tab" aria-selected="false"><span class="tab-icon">▦</span><span class="tab-label">Items</span></button>
+  <button class="tab" data-tab="shops" role="tab" aria-selected="false"><span class="tab-icon">⌖</span><span class="tab-label">Shops</span></button>
+  <button class="tab" data-tab="spending" role="tab" aria-selected="false"><span class="tab-icon">◒</span><span class="tab-label">Spending</span></button>
+  <button class="tab" data-tab="shopping" role="tab" aria-selected="false"><span class="tab-icon">🛒</span><span class="tab-label">Shopping</span></button>
+  <button class="tab" data-tab="receipts" role="tab" aria-selected="false"><span class="tab-icon">🧾</span><span class="tab-label">Receipts</span></button>
+</nav>
+<section id="dash"></section><section id="items" style="display:none"></section><section id="shops" style="display:none"></section><section id="spending" style="display:none"></section><section id="shopping" style="display:none"></section><section id="receipts" style="display:none"></section>
 </main>
 
 <div id="modal" class="modal"><div class="modalbox"><h3 id="modalTitle">Edit entry</h3><div class="row"><div class="field"><label>Item</label><input id="mItem"></div><div class="field"><label>Category</label><input id="mCat"></div></div><div class="row" style="margin-top:10px"><div class="field"><label>Shop</label><input id="mShop"></div><div class="field"><label>Price</label><input id="mPrice" type="number" step=".01"></div></div><div class="field" style="margin-top:10px"><label>Date</label><input id="mDate" type="date"></div><div class="btnrow"><button class="primary" id="saveEdit">Save changes</button><button class="ghost" id="cancelEdit">Cancel</button></div></div></div>
@@ -83,12 +105,44 @@ input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px
 const KEY="price-log-entries-v1";
 const BILL_KEY="price-log-bills-v1";
 const SHOPPING_KEY="price-log-shopping-v1";
+const RECEIPT_DB="price-log-receipts-v1";
+const RECEIPT_STORE="receipts";
+let receiptDB=null;
 let bills=[];
 let entries=[], scanEntries=[], currentEdit=-1, currentBill=null;
 let shoppingItems=[];
 
 const $=id=>document.getElementById(id);
 function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function openReceiptDB(){
+ return new Promise((resolve,reject)=>{
+  if(receiptDB){resolve(receiptDB);return}
+  if(!window.indexedDB){reject(new Error("IndexedDB unavailable"));return}
+  const req=indexedDB.open(RECEIPT_DB,1);
+  req.onupgradeneeded=e=>{const db=e.target.result;if(!db.objectStoreNames.contains(RECEIPT_STORE)){const store=db.createObjectStore(RECEIPT_STORE,{keyPath:"id"});store.createIndex("billId","billId",{unique:false});store.createIndex("date","date",{unique:false});}};
+  req.onsuccess=e=>{receiptDB=e.target.result;resolve(receiptDB)};
+  req.onerror=()=>reject(req.error||new Error("Could not open receipt storage"));
+ });
+}
+async function saveReceiptRecord(file,meta={}){
+ try{const db=await openReceiptDB();const id=meta.id||crypto.randomUUID();const record={id,billId:meta.billId||"",shop:meta.shop||"Unknown shop",date:meta.date||today(),total:Number(meta.total)||0,subtotal:Number(meta.subtotal)||0,tax:Number(meta.tax)||0,createdAt:meta.createdAt||Date.now(),blob:file};await new Promise((resolve,reject)=>{const tx=db.transaction(RECEIPT_STORE,"readwrite");tx.objectStore(RECEIPT_STORE).put(record);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});return id}catch(e){console.warn("Receipt could not be stored",e);return null}
+}
+async function listReceipts(){try{const db=await openReceiptDB();return await new Promise((resolve,reject)=>{const req=db.transaction(RECEIPT_STORE,"readonly").objectStore(RECEIPT_STORE).getAll();req.onsuccess=()=>resolve((req.result||[]).sort((a,b)=>b.createdAt-a.createdAt));req.onerror=()=>reject(req.error)})}catch(e){return []}}
+async function deleteReceiptRecord(id){try{const db=await openReceiptDB();await new Promise((resolve,reject)=>{const tx=db.transaction(RECEIPT_STORE,"readwrite");tx.objectStore(RECEIPT_STORE).delete(id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});renderReceipts()}catch(e){alert("Could not delete the saved receipt.")}}
+async function renderReceipts(){
+ const box=$("receipts");if(!box)return;
+ box.innerHTML='<div class="list-card"><h3 style="margin-top:0">Saved receipts</h3><div class="match-note">Receipt images are stored on this device in this browser for future reference.</div><div id="receiptList" class="receipt-grid" style="margin-top:12px"><div class="match-note">Loading receipts…</div></div></div>';
+ const list=await listReceipts(),grid=$("receiptList");
+ if(!list.length){grid.innerHTML='<div class="empty">No receipts saved yet. Scan or upload a bill and it will appear here.</div>';return}
+ grid.innerHTML=list.map(r=>{const u=URL.createObjectURL(r.blob);return `<div class="receipt-card"><a href="${u}" target="_blank" rel="noopener"><img class="receipt-thumb" src="${u}" alt="Saved receipt"></a><div class="receipt-meta"><b>${esc(r.shop)}</b><small>${esc(r.date)}${r.total?` · MVR ${r.total.toFixed(2)}`:""}</small><div class="receipt-actions"><button class="ghost" type="button" data-open-receipt="${esc(r.id)}">View</button><button class="danger" type="button" data-delete-receipt="${esc(r.id)}">Delete</button></div></div></div>`}).join("");
+ grid.querySelectorAll("[data-open-receipt]").forEach(btn=>btn.addEventListener("click",async()=>{const rows=await listReceipts(),r=rows.find(x=>x.id===btn.dataset.openReceipt);if(r)window.open(URL.createObjectURL(r.blob),"_blank")}));
+ grid.querySelectorAll("[data-delete-receipt]").forEach(btn=>btn.addEventListener("click",()=>{if(confirm("Delete this saved receipt?"))deleteReceiptRecord(btn.dataset.deleteReceipt)}));
+}
+async function updateSavedReceiptMeta(){
+ if(!currentBill?.receiptId)return;
+ try{const db=await openReceiptDB(),rows=await listReceipts(),r=rows.find(x=>x.id===currentBill.receiptId);if(!r)return;r.billId=currentBill.id||"";r.shop=currentBill.shop||r.shop;r.date=currentBill.date||r.date;r.total=Number(currentBill.total)||0;r.subtotal=Number(currentBill.subtotal)||0;r.tax=Number(currentBill.tax)||0;await new Promise((resolve,reject)=>{const tx=db.transaction(RECEIPT_STORE,"readwrite");tx.objectStore(RECEIPT_STORE).put(r);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error)});renderReceipts()}catch(e){console.warn("Could not update saved receipt",e)}
+}
+
 function load(){
  try{entries=JSON.parse(localStorage.getItem(KEY)||"[]");if(!Array.isArray(entries))entries=[]}catch(e){entries=[]}
  try{bills=JSON.parse(localStorage.getItem(BILL_KEY)||"[]");if(!Array.isArray(bills))bills=[]}catch(e){bills=[]}
@@ -273,8 +327,8 @@ function importShoppingFromUrl(){
  if(!raw)return 0;
  const added=mergeShoppingItems(raw.replace(/\r/g,"\n").split(/\n+/));
  const tab=document.querySelector('.tab[data-tab="shopping"]');
- if(tab){document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));tab.classList.add("active");}
- ["dash","items","shops","spending","shopping"].forEach(x=>$(x).style.display=x==="shopping"?"":"none");
+ if(tab){document.querySelectorAll(".tab").forEach(x=>{x.classList.remove("active");x.setAttribute("aria-selected","false")});tab.classList.add("active");tab.setAttribute("aria-selected","true");}
+ ["dash","items","shops","spending","shopping","receipts"].forEach(x=>$(x).style.display=x==="shopping"?"":"none");
  history.replaceState({},document.title,location.pathname+location.hash);
  return added;
 }
@@ -340,8 +394,9 @@ async function handleShoppingFile(file){
  }
 }
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
- document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");
- ["dash","items","shops","spending","shopping"].forEach(x=>$(x).style.display=x===t.dataset.tab?"":"none");
+ document.querySelectorAll(".tab").forEach(x=>{x.classList.remove("active");x.setAttribute("aria-selected","false")});
+ t.classList.add("active");t.setAttribute("aria-selected","true");
+ ["dash","items","shops","spending","shopping","receipts"].forEach(x=>$(x).style.display=x===t.dataset.tab?"":"none");
 });
 
 $("scanBtn").onclick=()=>$("cameraInput").click();
@@ -349,25 +404,19 @@ $("uploadBtn").onclick=()=>$("uploadInput").click();
 $("cameraInput").onchange=e=>handleFile(e.target.files[0]);
 $("uploadInput").onchange=e=>handleFile(e.target.files[0]);
 
-function fixOcrDigits(text){
- const map={O:"0",o:"0",I:"1",l:"1",S:"5",B:"8",Z:"2",G:"6"};
- return text.replace(/\b[0-9OoIlSBZG]{1,6}[.,][0-9OoIlSBZG]{2}\b/g,tok=>tok.replace(/[OoIlSBZG]/g,c=>map[c]||c));
-}
 function moneyNumbers(s){return [...s.matchAll(/(?:MVR\s*)?(\d{1,5}(?:[.,]\d{2}))/gi)].map(m=>parseFloat(m[1].replace(",",".")))}
 function guessDate(text){const m=text.match(/\b(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})\b/);if(!m)return today();let y=m[3];if(y.length===2)y="20"+y;return `${y}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`}
 function guessShop(lines){
- const bad=/^(date|time|invoice|bill|receipt|subtotal|total|cash|change|tax|gst|qty|item|description|amount|register|cashier|type|temp|tin|phone|email|customer|print|powered|tax invoice|bill no|ph:|mb:|tel:|dhunburi|vinare)/i;
- for(const raw of lines.slice(0,10)){
-   const x=raw.trim();
-   if(x.length<4)continue;
-   if(bad.test(x))continue;
-   if(/@|https?:|www\./i.test(x))continue;
-   if(!/[A-Za-z]{3}/.test(x))continue;
-   const digits=(x.match(/\d/g)||[]).length;
-   if(digits/x.length>0.4)continue; // phone/TIN/barcode-style line, not a name
-   return x;
- }
- return $("shop").value.trim()||"Unknown shop";
+ const bad=/^(date|time|invoice|bill|receipt|subtotal|total|cash|change|tax|gst|qty|item|description|amount|register|cashier|type|temp|tin|phone|email|customer|print|powered|tax invoice|bill no)/i;
+ const header=lines.slice(0,18).filter(x=>x.length>4&&!bad.test(x)&&/[A-Za-z]/.test(x)&&!/@/.test(x));
+ const score=x=>{
+   const letters=(x.match(/[A-Za-z]/g)||[]).length;
+   const upper=(x.match(/[A-Z]/g)||[]).length;
+   const words=x.split(/\s+/).length;
+   const address=/vinare|hulhumale|malé|male|phone|mob|road|street|atoll/i.test(x);
+   return (upper/Math.max(1,letters))*4 + Math.min(words,4)*.35 - (address?2:0) - (/[0-9]{2,}/.test(x)?2:0);
+ };
+ return header.sort((a,b)=>score(b)-score(a))[0]||$("shop").value.trim()||"Unknown shop";
 }
 
 function duplicateKey(c){
@@ -380,7 +429,7 @@ function alreadyExists(c){
 function parseReceipt(text){
  text=fixOcrDigits(text);
  const lines=text.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
- const shop=guessShop(lines),date=guessDate(text);
+ const date=guessDate(text);
  let subtotal=null,tax=null,total=null,discount=null,pointsUsed=null,paymentAmount=null;
  for(const line of lines){
   const low=line.toLowerCase(), nums=moneyNumbers(line); if(!nums.length)continue;
@@ -388,87 +437,116 @@ function parseReceipt(text){
   else if(/\btotal\s*gst\b|\bgst\b|\btax\b|\bvat\b/.test(low) && !/subtotal/.test(low)) tax=nums[nums.length-1];
   else if(/\b(discount|disc)\b/.test(low)) discount=nums[nums.length-1];
   else if(/\bpoints?\s*(used|redeemed)|\b(loyalty|reward)\s*(used|redeemed)|\b(redeem|redeemed|redemption)\b/.test(low)){
-    if(/used|redeemed|redemption|redeem/.test(low)) pointsUsed=nums[nums.length-1];
+    if(/used|redeemed|redemption|redeem/.test(low))pointsUsed=nums[nums.length-1];
   } else if(/\btotal\s*(?:\(\s*mvr\s*\)|mvr)?\b/i.test(low) && !/subtotal|total\s*gst|total\s*tax/.test(low)) total=nums[nums.length-1];
   else if(/\b(received|paid|payment|cash|settled)\b/.test(low) && !/outstanding|balance/.test(low)) paymentAmount=nums[nums.length-1];
  }
  if(total==null&&paymentAmount!=null)total=paymentAmount;
  if(total==null&&subtotal!=null)total=Math.max(0,subtotal+(tax||0)-(discount||0)-(pointsUsed||0));
- const noise=/^(subtotal|sub\s*total|total|gst|tax|vat|total\s*gst|cash|change|balance|amount|payment|paid|received|received\s*amount|card|card\s*customer|credit\s*card|debit\s*card|visa|mastercard|master|amex|tender|discount|disc|points?|loyalty|reward|redeem|redeemed|redemption|rounding|thank|thank\s*you|date|time|invoice|bill|receipt|qty|quantity|description|customer|customer\s*tn|tin|print\s*by|powered\s*by|outstanding|settled)$/i;
- const itemNoise=/(card\s*customer|card|paid|visa|mastercard|master|amex|credit|debit|cash|payment|tender|discount|disc|points?|loyalty|reward|redeem|redeemed|redemption|powered\s*by|print\s*by|subtotal|total|gst|tax|balance|outstanding|settled|bill\s*(no|date)|customer|tin|phone|mob|vinare|hulhumale|\bsn\b|\bqty\b|a\.?\s*rate|s\.?\s*rate|\bamount\b|\bdescription\b)/i;
- const isNumericOnly=s=>/^\s*[0-9IlOo.,:'"“”‘’`=+*xX×\- ]+\s*$/.test(s);
- const isNumericRow=line=>{
-   const n=moneyNumbers(line);
-   return n.length>=3 && n.length<=7 && isNumericOnly(line);
- };
+
  const cleanName=s=>String(s||'').replace(/^[\s|_\-–—:.,]+|[\s|_\-–—:.,]+$/g,'').replace(/\s+/g,' ').trim();
- const looksLikeName=s=>{
-   s=cleanName(s); if(s.length<4||!/[A-Za-z]{3}/.test(s)||noise.test(s)||itemNoise.test(s))return false;
-   if(isNumericOnly(s))return false;
+ const badShop=/^(date|time|invoice|bill|receipt|subtotal|sub\s*total|total|cash|change|tax|gst|qty|item|description|amount|register|cashier|type|temp|tin|phone|email|customer|print|powered|tax invoice|bill no|ph:|mb:|tel:|vinare|tin\s*:)/i;
+ function detectShop(){
+   const top=lines.slice(0,12);
+   const preferred=top.filter(x=>!badShop.test(x)&&!/[0-9]{5,}/.test(x)&&/[A-Za-z]{3}/.test(x));
+   // Strong shop-name signals first.
+   const strong=preferred.find(x=>/\b(mart|market|store|shop|fihaara|fithaara|supermarket)\b/i.test(x));
+   if(strong)return cleanName(strong);
+   // Otherwise prefer a short, mostly-uppercase first business-looking line.
+   const scored=preferred.map(x=>{const letters=(x.match(/[A-Za-z]/g)||[]).length;const upper=(x.match(/[A-Z]/g)||[]).length;return {x,score:(upper/Math.max(1,letters))*4-Math.max(0,x.length-28)*.05}}).sort((a,b)=>b.score-a.score);
+   return scored[0]?.x||$('shop').value.trim()||'Unknown shop';
+ }
+ const shop=detectShop();
+
+ const stopItem=/^(sub\s*total|discount|total\s*gst|plastic\s*bag|total\s*amount|received\s*amount|balance|outstanding|settled|thank|powered\s*by|print\s*by|card|cash|payment)/i;
+ const noiseName=/^(sn|qty|a\.?\s*rate|s\.?\s*rate|amount|gst|item|description|total|subtotal|discount|customer|bill|date|time|register|cashier)$/i;
+ const numericTokens=s=>String(s||'').match(/\d+(?:[.,]\d+)?/g)||[];
+ const toNum=s=>parseFloat(String(s).replace(',','.'));
+ const isNumLine=s=>numericTokens(s).length>=3 && (/[0-9]/.test(s));
+ const looksName=s=>{
+   s=cleanName(s);
+   if(s.length<4||stopItem.test(s)||noiseName.test(s)||!/[A-Za-z]{3}/.test(s))return false;
    const digits=(s.match(/\d/g)||[]).length;
-   if(digits/s.length>0.35)return false; // garbled numeric-row fragment misread as a name, not a real product line
-   return true;
+   return digits/s.length<0.35;
  };
- const chooseNumbers=(nums)=>{
-   if(nums.length>=6)return {qty:nums[1],unit:nums[2],amount:nums[4],gst:nums[5]};
-   if(nums.length>=5)return {qty:nums[0],unit:nums[1],amount:nums[3],gst:nums[4]};
-   if(nums.length===4)return {qty:nums[0],unit:nums[1],amount:nums[2],gst:nums[3]};
-   if(nums.length===3)return {qty:null,unit:nums[0],amount:nums[1],gst:nums[2]};
-   return null;
+ const makeCandidate=(name,price,qty,lineTotal,gst)=>{
+   name=cleanName(name); price=Number(price);
+   if(!looksName(name)||!Number.isFinite(price)||price<=0||price>=100000)return null;
+   const c={item:name,shop,date,price,qty:Number.isFinite(Number(qty))?Number(qty):null,lineTotal:Number.isFinite(Number(lineTotal))?Number(lineTotal):null,gst:Number.isFinite(Number(gst))?Number(gst):null};
+   c.added=alreadyExists(c); return c;
  };
- const found=[];
- const tableStart=Math.max(0,lines.findIndex(l=>isNumericRow(l)));
- // First pass: normal POS layout, where the numeric row is directly before the item name.
+
+ // ---------- FORMAT 1: Ihsaan / POS table ----------
+ // Header is SN | Qty | A.Rate | S.Rate | Amount | GST.
+ // A.Rate is ALWAYS the stored item price. SN only identifies the item row.
+ let header=-1;
  for(let i=0;i<lines.length;i++){
-   if(!isNumericRow(lines[i]))continue;
-   const nums=moneyNumbers(lines[i]), vals=chooseNumbers(nums); if(!vals||vals.unit<=0)continue;
-   let name='';
-   for(let j=i+1;j<=Math.min(lines.length-1,i+2);j++){
-     if(isNumericRow(lines[j]))break;
-     if(looksLikeName(lines[j])){name=cleanName(lines[j]);break;}
-   }
-   if(name)found.push({item:name,shop,date,price:Number(vals.unit),qty:Number(vals.qty),lineTotal:Number(vals.amount),gst:vals.gst==null?null:Number(vals.gst),added:alreadyExists({item:name,shop,date,price:Number(vals.unit)})});
+   if(/\bsn\b/i.test(lines[i])&&/qty/i.test(lines[i])&&/a\.?\s*rate/i.test(lines[i])){header=i;break;}
  }
- // Second pass: OCR often splits/garbles the numeric row. For every plausible product-name line,
- // inspect the two surrounding lines and use the first three-to-five money values as Qty/A.Rate/Amount/GST.
- // Only look at lines from where the item table actually starts, so the receipt's own header/address
- // block above the table can't get mistaken for a product name just because a price sits nearby.
- if(found.length<5){
-   for(let i=tableStart;i<lines.length;i++){
-     const name=cleanName(lines[i]); if(!looksLikeName(name))continue;
-     let best=null;
-     for(const k of [i-1,i+1,i-2,i+2]){
-       if(k<0||k>=lines.length)continue;
-       const nums=moneyNumbers(lines[k]);
-       if(nums.length>=3){
-         const v=chooseNumbers(nums); if(!v||v.unit<=0)continue;
-         let score=nums.length>=4?4:3;
-         if(k===i-1)score+=1;
-         if(v.amount>=v.unit)score+=1;
-         if(v.gst!=null&&v.gst<v.amount)score+=1;
-         if(!best||score>best.score)best={score,v};
+ const found=[];
+ if(header>=0){
+   for(let i=header+1;i<lines.length;i++){
+     if(stopItem.test(lines[i]))break;
+     const nums=numericTokens(lines[i]).map(toNum);
+     // Typical OCR row: SN Qty A.Rate S.Rate Amount GST = 6 numeric tokens.
+     if(nums.length<5||nums.length>7)continue;
+     const sn=nums[0];
+     if(!Number.isInteger(sn)||sn<1||sn>999)continue;
+     let qty=null,arate=null,srate=null,amount=null,gst=null;
+     if(nums.length>=6){qty=nums[1];arate=nums[2];srate=nums[3];amount=nums[4];gst=nums[5];}
+     else {qty=nums[1];arate=nums[2];srate=nums[2];amount=nums[3];gst=nums[4];}
+     // The next meaningful line is the product name. Ignore dotted separator lines.
+     let name='';
+     for(let j=i+1;j<=Math.min(i+3,lines.length-1);j++){
+       if(stopItem.test(lines[j]))break;
+       if(isNumLine(lines[j]))continue;
+       if(looksName(lines[j])){name=lines[j];break;}
+     }
+     const c=makeCandidate(name,arate,qty,amount,gst);
+     if(c&&!found.some(x=>x.item.toLowerCase()===c.item.toLowerCase()))found.push(c);
+   }
+ }
+
+ // ---------- FORMAT 2: Day Night Mart / simple Item-QTY-Total ----------
+ // Typical row is PRODUCT NAME + Qty (pcs/kg/etc) + line total. For Qty > 1,
+ // Price Log stores the per-unit price = line total / quantity.
+ if(found.length<3){
+   const itemHeader=lines.findIndex(x=>/\bitem\b/i.test(x)&&/\bqty\b/i.test(x)&&/\btotal\b/i.test(x));
+   const start=itemHeader>=0?itemHeader+1:0;
+   for(let i=start;i<lines.length;i++){
+     if(stopItem.test(lines[i]))break;
+     let name='',qty=null,lineTotal=null;
+     const same=lines[i].match(/^(.+?)\s+(\d+(?:\.\d+)?)\s*(?:pcs?|pc|kg|g|ml|l)?\s+(\d+(?:[.,]\d{2}))\s*$/i);
+     if(same){name=cleanName(same[1]);qty=toNum(same[2]);lineTotal=toNum(same[3]);}
+     else if(looksName(lines[i])){
+       // Search the next two lines for the quantity/total pair.
+       for(let j=i+1;j<=Math.min(i+2,lines.length-1);j++){
+         const toks=numericTokens(lines[j]).map(toNum);
+         if(toks.length>=2){
+           qty=toks[0];lineTotal=toks[toks.length-1];break;
+         }
        }
+       name=cleanName(lines[i]);
      }
-     if(best){
-       const v=best.v;
-       if(v.unit>0&&v.unit<100000&&!found.some(x=>x.item.toLowerCase()===name.toLowerCase()))
-         found.push({item:name,shop,date,price:Number(v.unit),qty:Number(v.qty),lineTotal:Number(v.amount),gst:v.gst==null?null:Number(v.gst),added:alreadyExists({item:name,shop,date,price:Number(v.unit)})});
-     }
+     if(!name||!Number.isFinite(lineTotal)||!Number.isFinite(qty)||qty<=0)continue;
+     const unit=lineTotal/qty;
+     const c=makeCandidate(name,unit,qty,lineTotal,null);
+     if(c&&!found.some(x=>x.item.toLowerCase()===c.item.toLowerCase()))found.push(c);
    }
  }
- // Third pass: same-line OCR fallback — catches simple receipts with just one price per line.
+
+ // ---------- Fallback ----------
  if(!found.length){
    for(let i=0;i<lines.length;i++){
-     const line=lines[i]; if(noise.test(line)||itemNoise.test(line))continue;
-     const nums=moneyNumbers(line); if(nums.length<1)continue;
-     const m=line.match(/\d{1,5}(?:[.,]\d{2})/); let name=m?cleanName(line.slice(0,m.index)):'';
-     name=name.replace(/\b\d+\s*(pcs|pc|kg|g|ml|l)\b\.?/gi,'').replace(/[|_\-–—]+$/,'').trim();
-     if(!looksLikeName(name)&&i>0&&!moneyNumbers(lines[i-1]).length){
-       const prev=cleanName(lines[i-1]).replace(/\b\d+\s*(pcs|pc|kg|g|ml|l)\b\.?/gi,'').trim();
-       if(looksLikeName(prev))name=prev;
+     if(!looksName(lines[i]))continue;
+     for(let j=i+1;j<=Math.min(i+2,lines.length-1);j++){
+       const nums=numericTokens(lines[j]).map(toNum);
+       if(nums.length>=2){
+         const qty=nums[0],amount=nums[nums.length-1],price=qty>0?amount/qty:amount;
+         const c=makeCandidate(lines[i],price,qty,amount,null);
+         if(c){found.push(c);break;}
+       }
      }
-     const price=nums.length>=3?nums[1]:nums[nums.length-1];
-     if(looksLikeName(name)&&price>0&&price<100000)found.push({item:name,shop,date,price:Number(price),added:alreadyExists({item:name,shop,date,price:Number(price)})});
    }
  }
  return {shop,date,subtotal,tax,discount,pointsUsed,total,items:dedupe(found)};
@@ -476,39 +554,50 @@ function parseReceipt(text){
 function dedupe(a){const seen=new Set();return a.filter(x=>{const k=duplicateKey(x);if(seen.has(k))return false;seen.add(k);return true})}
 
 function renderScan(){
- const c=$("candidates");if(!scanEntries.length){c.innerHTML="";return}
+ const c=$('candidates');
+ if(!scanEntries.length){c.innerHTML='';return}
  const newCount=scanEntries.filter(x=>!x.added).length;
- c.innerHTML=`<div style="font-size:12px;color:var(--dim);margin-bottom:6px">Found ${scanEntries.length} priced item(s). ${newCount?newCount+" new/missing item(s)":"All detected items are already recorded."}</div>
- ${newCount?'<div class="btnrow" style="margin-top:6px"><button class="primary" id="addAllScanned">Add all from scanned bill</button><button class="ghost" id="addMissingScanned">Add missing only</button></div>':''}
- ${scanEntries.map((x,i)=>`<div class="cand ${x.added?'':'new'}"><span class="cand-text">${esc(x.item)}<br><small style="color:var(--dim)">${esc(x.shop)}</small></span>${x.added?'<span class="badge">Already added</span>':""}<span class="cand-price">MVR ${x.price.toFixed(2)}</span><button class="ghost small" onclick="editCandidate(${i})">${x.added?"View/Edit":"Edit"}</button>${x.added?"":`<button class="ghost small" onclick="addCandidate(${i})">Add</button>`}</div>`).join("")}`;
- if($("addAllScanned"))$("addAllScanned").onclick=()=>{
-   scanEntries.forEach((x,i)=>addCandidate(i));
-   upsertBill();
-   $("status").textContent=`Added ${scanEntries.length} item(s) from the scanned bill. Total spend includes tax.`;
-   renderScan();
- };
- if($("addMissingScanned"))$("addMissingScanned").onclick=()=>{
-   const before=scanEntries.filter(x=>!x.added).length;
-   scanEntries.forEach((x,i)=>{if(!x.added)addCandidate(i)});
-   upsertBill();
-   $("status").textContent=before?`Added ${before} missing item(s). Total spend includes tax.`:"No missing items.";
-   renderScan();
- };
+ c.innerHTML=`<div style="font-size:12px;color:var(--dim);margin-bottom:6px">Found ${scanEntries.length} priced item(s). ${newCount?newCount+' new/missing item(s)':'All detected items are already recorded.'}</div>
+ ${newCount?'<div class="btnrow" style="margin-top:6px"><button class="primary" id="addAllScanned" type="button">Add all from scanned bill</button><button class="ghost" id="addMissingScanned" type="button">Add missing only</button></div>':''}
+ ${scanEntries.map((x,i)=>`<div class="cand ${x.added?'':'new'}"><span class="cand-text">${esc(x.item)}<br><small style="color:var(--dim)">${esc(x.shop)}</small></span>${x.added?'<span class="badge">Already added</span>':''}<span class="cand-price">MVR ${Number(x.price).toFixed(2)}</span><button class="ghost small" type="button" data-edit-candidate="${i}">${x.added?'View/Edit':'Edit'}</button>${x.added?'':`<button class="ghost small" type="button" data-add-candidate="${i}">Add</button>`}</div>`).join('')}`;
+ c.querySelectorAll('[data-edit-candidate]').forEach(btn=>btn.addEventListener('click',()=>editCandidate(Number(btn.dataset.editCandidate))));
+ c.querySelectorAll('[data-add-candidate]').forEach(btn=>btn.addEventListener('click',()=>addCandidate(Number(btn.dataset.addCandidate))));
+ const all=$('addAllScanned');
+ if(all)all.addEventListener('click',()=>addScannedItems(false));
+ const missing=$('addMissingScanned');
+ if(missing)missing.addEventListener('click',()=>addScannedItems(true));
+}
+function addScannedItems(missingOnly){
+ if(!scanEntries.length)return;
+ const pending=scanEntries.filter(x=>!x.added);
+ if(!pending.length){$('status').textContent='No missing items to add.';renderScan();return}
+ let added=0;
+ const billShop=(currentBill?.shop||$('shop').value.trim()||'Unknown shop').trim();
+ pending.forEach(x=>{
+   const shop=(x.shop||billShop).trim();
+   const candidate={item:x.item,category:x.category||autoCategory(x.item),shop,price:Number(x.price),date:x.date||currentBill?.date||today(),sourceBillId:currentBill?.id||null};
+   const duplicate=entries.some(e=>duplicateKey(e)===duplicateKey(candidate));
+   if(!duplicate){entries.push(candidate);added++;}
+   x.added=true;x.shop=shop;
+ });
+ save();
+ if(currentBill){currentBill.shop=billShop;currentBill.id=billId(currentBill);upsertBill();}
+ render();
+ renderScan();
+ $('status').textContent=missingOnly?`Added ${added} missing item(s) from the scanned bill.`:`Added ${added} item(s) from the scanned bill.`;
 }
 function addCandidate(i){
  const x=scanEntries[i];
  if(!x||x.added)return;
- const shop=(x.shop||currentBill?.shop||$("shop").value.trim()||"Unknown shop").trim();
- const candidate={item:x.item,category:x.category||$("category").value.trim(),shop,price:Number(x.price),date:x.date||currentBill?.date||today(),sourceBillId:currentBill?.id||null};
- const duplicate=entries.some(e=>duplicateKey(e)===duplicateKey(candidate));
- if(!duplicate){
-   entries.push(candidate);
-   save();
-   upsertBill();
- }
- x.added=true;
- x.shop=shop;
+ const shop=(x.shop||currentBill?.shop||$('shop').value.trim()||'Unknown shop').trim();
+ const candidate={item:x.item,category:x.category||autoCategory(x.item),shop,price:Number(x.price),date:x.date||currentBill?.date||today(),sourceBillId:currentBill?.id||null};
+ if(!entries.some(e=>duplicateKey(e)===duplicateKey(candidate)))entries.push(candidate);
+ x.added=true;x.shop=shop;
+ save();
+ if(currentBill)upsertBill();
  render();
+ renderScan();
+ $('status').textContent=`Added ${x.item}.`;
 }
 function editCandidate(i){
  const x=scanEntries[i];currentEdit=-1;$("mItem").value=x.item;$("mCat").value=$("category").value;$("mShop").value=x.shop;$("mPrice").value=x.price;$("mDate").value=x.date;$("modal").classList.add("open");
@@ -547,26 +636,31 @@ function preprocess(file,mode="normal"){
 }
 async function handleFile(file){
  if(!file)return;
+ const pendingReceiptId=crypto.randomUUID();
+ currentBill={receiptId:pendingReceiptId};
+ await saveReceiptRecord(file,{id:pendingReceiptId,shop:"Unprocessed receipt",date:today()});
+ renderReceipts();
  $("status").textContent="Preparing receipt…";$("preview").src=URL.createObjectURL(file);$("preview").style.display="block";scanEntries=[];$("billInfo").innerHTML="";renderScan();
  try{
   const T=await loadOCR();$("status").textContent="Reading receipt…";
   const attempts=[
-   ["normal","6"],["high","6"],["normal","4"],["high","11"],["bw","6"],["normal","3"]
+   ["normal","6"],["high","6"],["normal","4"],["high","11"],["bw","6"]
   ];
   let best={items:[],shop:"Unknown shop",date:today()};
   for(let ai=0;ai<attempts.length;ai++){
    const [mode,psm]=attempts[ai];
    $("status").textContent=`Reading receipt… ${ai+1}/${attempts.length}`;
-   try{
-    const processed=await preprocess(file,mode);
-    const r=await T.recognize(processed,"eng",{logger:m=>{if(m.status==="recognizing text")$("status").textContent=`Reading receipt… ${ai+1}/${attempts.length} ${Math.round((m.progress||0)*100)}%`},tessedit_pageseg_mode:psm});
-    const parsed=parseReceipt(r.data.text||"");
-    if((parsed.items||[]).length>(best.items||[]).length || (!best.subtotal&&parsed.subtotal)) best=parsed;
-   }catch(attemptErr){ console.warn("OCR attempt failed",mode,psm,attemptErr); }
+   const processed=await preprocess(file,mode);
+   const r=await T.recognize(processed,"eng",{logger:m=>{if(m.status==="recognizing text")$("status").textContent=`Reading receipt… ${ai+1}/${attempts.length} ${Math.round((m.progress||0)*100)}%`},tessedit_pageseg_mode:psm});
+   const parsed=parseReceipt(r.data.text||"");
+   if((parsed.items||[]).length>(best.items||[]).length || (!best.subtotal&&parsed.subtotal)) best=parsed;
    if(best.items.length>=9) break;
   }
+  const receiptId=currentBill?.receiptId||pendingReceiptId;
   currentBill=best;
+  currentBill.receiptId=receiptId;
   currentBill.id=billId(currentBill);
+  await updateSavedReceiptMeta();
   scanEntries=currentBill.items;
   $("billInfo").innerHTML=`<div class="billbox">
   <div class="field" style="margin-bottom:10px">
@@ -586,13 +680,14 @@ async function handleFile(file){
       currentBill.shop=shopEdit.value.trim();
       currentBill.id=billId(currentBill);
       scanEntries.forEach(x=>x.shop=currentBill.shop);
+      updateSavedReceiptMeta();
       renderScan();
     });
   }
  }catch(e){console.error(e);$("status").textContent="Receipt could not be read. You can still use Add entry or try another photo."}
 }
 $("itemSearch").addEventListener("input",renderItemSearch);
-load();applyAutoCategories();render();renderItemSearch();renderShopping();
+load();applyAutoCategories();render();renderItemSearch();renderShopping();renderReceipts();
 const importedFromReminders=importShoppingFromUrl();
 if(importedFromReminders>0){renderShopping();showReminderImportStatus(importedFromReminders);}
 else if(new URLSearchParams(location.search).has("shopping")||new URLSearchParams(location.search).has("items")||new URLSearchParams(location.search).has("item")){renderShopping();showReminderImportStatus(0);}

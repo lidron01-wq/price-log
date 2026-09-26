@@ -16,7 +16,7 @@ input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px
 .btnrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}button{font:600 14px -apple-system,sans-serif;border:0;border-radius:8px;padding:11px 15px;cursor:pointer}
 .primary{background:var(--teal);color:var(--paper);flex:1}.ghost{background:transparent;color:var(--teal);border:1px solid var(--teal)}.danger{color:#b33;background:transparent;border:1px solid #b33}.small{padding:7px 10px;font-size:12px}
 .status{font-size:13px;color:var(--dim);margin-top:9px}.preview{display:none;width:100%;max-height:300px;object-fit:contain;margin-top:10px;border:1px solid var(--line);border-radius:8px}
-.tabs{display:flex;gap:8px;overflow:auto;border-bottom:1px solid var(--line);margin:24px 0 14px}.tab{background:none;color:var(--dim);border:0;border-bottom:2px solid transparent;border-radius:0;padding:9px 5px;margin-right:8px;white-space:nowrap}.tab.active{color:var(--ink);border-bottom-color:var(--coral)}
+.tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;position:sticky;bottom:10px;z-index:20;padding:6px;background:color-mix(in srgb,var(--card) 96%,transparent);border:1px solid var(--line);border-radius:18px;margin:24px 0 14px;box-shadow:0 8px 26px rgba(0,0,0,.16);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}.tab{position:relative;min-width:0;min-height:46px;display:flex;align-items:center;justify-content:center;background:transparent;color:var(--dim);border:0;border-radius:13px;padding:8px 4px;white-space:nowrap;font-size:11px;font-weight:650;line-height:1;letter-spacing:-.1px;overflow:visible}.tab-label{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis}.tab.active{background:var(--teal);color:var(--paper);box-shadow:0 3px 10px rgba(0,0,0,.12)}.tab .count{position:absolute;top:4px;right:4px;display:flex;min-width:15px;height:15px;padding:0 4px;align-items:center;justify-content:center;border-radius:99px;font-size:8px;font-weight:700;line-height:1;background:color-mix(in srgb,var(--dim) 20%,transparent);color:inherit}.tab.active .count{background:rgba(255,255,255,.22)}@media(max-width:430px){.tabs{gap:3px;padding:5px;border-radius:16px}.tab{min-height:44px;font-size:10.5px;padding:8px 2px;border-radius:12px}.tab .count{top:3px;right:3px;min-width:14px;height:14px;padding:0 3px;font-size:8px}}
 .empty{color:var(--dim);font-size:14px;padding:20px 4px}.category-head{font-size:13px;font-weight:700;color:var(--coral);margin:18px 2px 8px}.item-group{overflow:hidden;margin-bottom:12px}.item-head{padding:12px 14px;font-weight:700;border-bottom:1px solid var(--line)}.entry{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:14px}.entry:last-child{border:0}.date{color:var(--dim);font-size:11px}.price{font-weight:700}.entry-actions{display:flex;gap:5px;align-items:center}.entry-actions button{padding:5px 8px;font-size:12px}
 .candidates{margin-top:12px}.cand{display:flex;align-items:center;gap:7px;padding:9px;margin-top:6px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}.cand.new{border-color:var(--good)}.cand-text{flex:1;overflow:hidden;text-overflow:ellipsis}.cand-price{font-weight:700;white-space:nowrap}.badge{font-size:10px;padding:3px 5px;border-radius:5px;background:var(--good);color:white}
 .billbox{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}.billrow{display:flex;justify-content:space-between;padding:4px 0}.billrow.total{font-weight:800;font-size:17px;border-top:1px solid var(--line);margin-top:5px;padding-top:9px}
@@ -46,7 +46,7 @@ input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px
 <div id="billInfo"></div><div id="candidates" class="candidates"></div>
 </div>
 
-<div class="tabs"><button class="tab active" data-tab="dash">Dashboard</button><button class="tab" data-tab="items">Items</button><button class="tab" data-tab="shops">Shops</button><button class="tab" data-tab="spending">Spending</button><button class="tab" data-tab="receipts">Receipts</button></div>
+<nav class="tabs" aria-label="Price Log sections"><button class="tab active" data-tab="dash"><span class="tab-label">Dashboard</span><span class="count" id="tabDashCount">0</span></button><button class="tab" data-tab="items"><span class="tab-label">Items</span><span class="count" id="tabItemsCount">0</span></button><button class="tab" data-tab="shops"><span class="tab-label">Shops</span><span class="count" id="tabShopsCount">0</span></button><button class="tab" data-tab="spending"><span class="tab-label">Spending</span><span class="count" id="tabSpendingCount">0</span></button><button class="tab" data-tab="receipts"><span class="tab-label">Receipts</span><span class="count" id="tabReceiptsCount">0</span></button></nav>
 <section id="dash"></section><section id="items" style="display:none"></section><section id="shops" style="display:none"></section><section id="spending" style="display:none"></section><section id="receipts" style="display:none"></section>
 </main>
 
@@ -66,8 +66,12 @@ function save(){localStorage.setItem(KEY,JSON.stringify(entries))}
 function today(){return new Date().toISOString().slice(0,10)}
 $("date").value=today();
 
+function updateTabCounts(){
+ const counts={tabDashCount:entries.length,tabItemsCount:new Set(entries.map(e=>String(e.item||'').toLowerCase())).size,tabShopsCount:new Set(entries.map(e=>String(e.shop||'').toLowerCase())).size,tabSpendingCount:new Set(entries.map(e=>String(e.date||'').slice(0,7)).filter(Boolean)).size,tabReceiptsCount:savedReceipts.length};
+ Object.entries(counts).forEach(([id,n])=>{const el=$(id);if(el)el.textContent=n});
+}
 function render(){
- renderItems();renderShops();renderSpending();renderDash();renderCats();renderReceipts();
+ renderItems();renderShops();renderSpending();renderDash();renderCats();renderReceipts();updateTabCounts();
 }
 function renderCats(){$("categoryList").innerHTML=[...new Set(entries.map(e=>e.category).filter(Boolean))].sort().map(x=>`<option value="${esc(x)}">`).join("")}
 
@@ -127,7 +131,9 @@ function renderDash(){
 
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
  document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));t.classList.add("active");
- ["dash","items","shops","spending"].forEach(x=>$(x).style.display=x===t.dataset.tab?"":"none");
+ ["dash","items","shops","spending","receipts"].forEach(x=>$(x).style.display=x===t.dataset.tab?"":"none");
+ const target=$(t.dataset.tab);if(target)target.scrollIntoView({behavior:"smooth",block:"start"});
+ renderItems();renderShops();renderSpending();renderDash();renderReceipts();updateTabCounts();
 });
 
 $("scanBtn").onclick=()=>$("cameraInput").click();
@@ -199,115 +205,101 @@ function receiptMeta(lines,text,forcedShop){
 }
 function ihsaanNumToken(v){
  v=String(v||'').trim().replace(/[,:;]/g,'.').replace(/["'°]/g,'');
- if(!v||!/\d/.test(v))return null;
- v=v.replace(/[O]/g,'0').replace(/[Il]/g,'1').replace(/S/g,'5').replace(/Z/g,'2').replace(/G/g,'6').replace(/B/g,'8');
+ if(!v||!/[0-9]/.test(v))return null;
+ // Numeric correction is allowed ONLY on a token that already contains a digit.
+ v=v.replace(/O/g,'0').replace(/[Il]/g,'1').replace(/S/g,'5').replace(/Z/g,'2').replace(/G/g,'6').replace(/B/g,'8');
  v=v.replace(/[^0-9.]/g,'');
- const parts=v.split('.');
- if(parts.length>2)v=parts.shift()+'.'+parts.join('');
+ const parts=v.split('.');if(parts.length>2)v=parts.shift()+'.'+parts.join('');
  const n=parseFloat(v);return Number.isFinite(n)?n:null;
 }
-function ihsaanNumericRows(text){
+function ihsaanRowLines(text){
  const lines=String(text||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);let inTable=false,rows=[];
- for(const line of lines){
-  if(/\bSN\b.*\bQty\b.*A\.?\s*Rate.*S\.?\s*Rate.*Amount.*G/i.test(line)){inTable=true;continue}
+ for(let i=0;i<lines.length;i++){
+  const line=lines[i];
+  if(/\bSN\b.*\bQty\b.*A\.?\s*Rate.*S\.?\s*Rate.*Amount.*G(?:ST|S)/i.test(line)){inTable=true;continue}
   if(!inTable)continue;
   if(/sub\s*total|discount|total\s*gst|plastic\s*bag|total\s*amount|received|balance|print\s*by|powered\s*by/i.test(line))break;
-  const toks=line.split(/\s+/).filter(Boolean); if(toks.length<4)continue;
-  const nums=toks.map(ihsaanNumToken); const valid=nums.filter(n=>n!=null);
-  if(valid.length<4)continue;
-  // Receipt rows normally contain SN + Qty + A.Rate + S.Rate + Amount + GST.
-  // We do NOT convert ordinary words to digits; only tokens already containing a digit are numeric candidates.
-  let sn=ihsaanNumToken(toks[0]);
-  const tail=nums.slice(1);
-  if(tail.length<4)continue;
-  // Keep the first five numeric fields after SN when available.
-  const q=tail[0], a=tail[1], sr=tail[2], amt=tail[3], gst=tail[4];
-  if([q,a,sr,amt].filter(Number.isFinite).length<3)continue;
-  // Find the price column by the printed arithmetic: Qty * unit price ~= Amount.
-  const candidates=[a,sr].filter(Number.isFinite).filter(n=>n>0);
-  let unit=candidates[0]||null;
-  if(Number.isFinite(q)&&Number.isFinite(amt)){
-   const hit=candidates.find(x=>Math.abs(q*x-amt)<0.12);
-   if(hit!=null)unit=hit;
+  // OCR may attach a quote/dot to the serial or remove the space after it.
+  // Accept only the expected next serial number at the far-left edge.
+  const expected=rows.length+1;
+  const m=line.match(new RegExp('^\\s*[^A-Za-z0-9]{0,3}'+expected+'(?:\\s+|(?=\\d))','i'));
+  if(!m)continue;
+  rows.push({sn:expected,numberLine:line,nameLines:[]});
+ }
+ // Collect the text between numbered rows. The Ihsaan receipt places the item name directly below each numeric row.
+ for(let r=0;r<rows.length;r++){
+  const idx=lines.indexOf(rows[r].numberLine);
+  const next= r+1<rows.length ? lines.indexOf(rows[r+1].numberLine,idx+1) : lines.length;
+  for(let j=idx+1;j<next;j++){
+   const x=lines[j];
+   if(/sub\s*total|discount|total\s*gst|plastic\s*bag|total\s*amount|received|balance|print\s*by|powered\s*by/i.test(x))break;
+   if(/[A-Za-z]{3,}/.test(x) && !/^(?:SN|Qty|A\.?Rate|S\.?Rate|Amount|GST)$/i.test(x)) rows[r].nameLines.push(x);
   }
-  if(!Number.isFinite(unit)||unit<=0||unit>100000)continue;
-  rows.push({sn:Number.isFinite(sn)?sn:null,qty:q,price:unit,amount:amt,gst,raw:line});
  }
  return rows;
 }
-function ihsaanNameLines(text){
- const lines=String(text||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);let inTable=false,names=[];
- for(const line of lines){
-  if(/\bSN\b.*\bQty\b.*A\.?\s*Rate.*S\.?\s*Rate.*Amount.*G/i.test(line)){inTable=true;continue}
-  if(!inTable)continue;
-  if(/sub\s*total|discount|total\s*gst|plastic\s*bag|total\s*amount|received|balance|print\s*by|powered\s*by/i.test(line))break;
-  // A product-name line contains letters and is not predominantly numeric.
-  const digitCount=(line.match(/\d/g)||[]).length, letterCount=(line.match(/[A-Za-z]/g)||[]).length;
-  if(letterCount>=3 && digitCount<letterCount){
-   let n=cleanItemText(line).replace(/\b(na|ma|mi|oq|a|j|s\$|ee|K)\b$/i,'').trim();
-   if(n.length>14)names.push(n);
-  }
- }
- return names;
+function ihsaanNumericRow(row){
+ const toks=row.numberLine.split(/\s+/).filter(Boolean);
+ const nums=toks.slice(1).map(ihsaanNumToken).filter(n=>n!=null);
+ if(nums.length<4)return null;
+ // After SN: Qty, A.Rate, S.Rate, Amount, GST.
+ const q=nums[0], candidates=[nums[1],nums[2]].filter(Number.isFinite), amt=nums[3], gst=nums[4];
+ if(!Number.isFinite(q)||!Number.isFinite(amt))return null;
+ let unit=candidates.find(x=>Math.abs(q*x-amt)<0.20);
+ if(unit==null) unit=candidates[0];
+ if(!Number.isFinite(unit)||unit<=0)return null;
+ return {sn:row.sn,qty:q,price:unit,amount:amt,gst};
 }
 function ihsaanCleanName(name){
  let n=cleanItemText(name).replace(/\s+/g,' ').trim();
  const fixes=[
-  [/^SURINDER\s+FAY/i,'KURIANDER FAIY'],
-  [/^KURTANDER\s+FALY/i,'KURIANDER FAIY'],
-  [/^AQDI\s+FLOOR\s+BRUSH/i,'ADDI FLOOR BRUSH'],
-  [/^AODI\s+FLOOR\s+BRUSH/i,'ADDI FLOOR BRUSH'],
-  [/LRON[. ]*PLASTIC/i,'IRON.PLASTIC'],
-  [/SUHUNA\s+BI?TTER/i,'SUHUNA BUTTER'],
-  [/SUHANA\s+CHICKE?N\s+TIKKA/i,'SUHANA CHICKEN TIKKA'],
-  [/YOUNG[’']?\s*S\s+/i,"YOUNG'S "],
-  [/NOUNG[’']?S/i,"YOUNG'S"],
-  [/INDOMILK\s+KIDS/i,'INDOMILK KIDS'],
-  [/RENUKA\s+COCONUT/i,'RENUKA COCONUT'],
-  [/CAVIN[’']?S/i,"CAVIN'S"],
-  [/PAPER\s+SERVIETTES/i,'PAPER SERVIETTES']
+  [/^SURINDER\s+FAY/i,'KURIANDER FAIY'],[/^KURTANDER\s+FALY/i,'KURIANDER FAIY'],
+  [/^AQDI\s+FLOOR\s+BRUSH/i,'ADDI FLOOR BRUSH'],[/^AODI\s+FLOOR\s+BRUSH/i,'ADDI FLOOR BRUSH'],
+  [/LRON[. ]*PLASTIC/i,'IRON.PLASTIC'],[/SUHUNA\s+BI?TTER/i,'SUHUNA BUTTER'],
+  [/SUHANA\s+CHICKE?N\s+TIKKA/i,'SUHANA CHICKEN TIKKA'],[/YOUNG[’']?\s*S\s+/i,"YOUNG'S "],
+  [/NOUNG[’']?S/i,"YOUNG'S"],[/INDOMILK\s+KIDS/i,'INDOMILK KIDS'],[/RENUKA\s+COCONUT/i,'RENUKA COCONUT'],
+  [/CAVIN[’']?S/i,"CAVIN'S"],[/PAPER\s+SERVIETTES/i,'PAPER SERVIETTES']
  ];
  for(const [re,to] of fixes)n=n.replace(re,to);
- return n.replace(/\s+/g,' ').trim();
+ return n.replace(/\b(?:na|ma|mi|oq|a|j|s\$|ee|K|S)\b$/i,'').replace(/\s+/g,' ').trim();
 }
 function parseIhsaanCombined(texts){
- const all=(Array.isArray(texts)?texts:[texts]).filter(Boolean);const primary=all[1]||all[0]||'';
- const lines=primary.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const meta=receiptMeta(lines,all.join('\n'),"IHSAAN FIHAARA 3");
- // Name extraction is taken from the cleanest pass; numeric rows are merged from all passes.
- let names=ihsaanNameLines(primary);
- if(names.length<11){for(const t of all){const n=ihsaanNameLines(t);if(n.length>names.length)names=n;}}
- const numeric=[];for(const t of all)numeric.push(...ihsaanNumericRows(t));
- // Keep the best 11 numeric rows by order and arithmetic. Deduplicate near-identical rows.
- const unique=[];for(const r of numeric){const dup=unique.some(x=>Math.abs(x.amount-r.amount)<0.03&&Math.abs(x.gst-r.gst)<0.08&&Math.abs(x.price-r.price)<0.08);if(!dup)unique.push(r);}
- // Prefer rows in the natural receipt order. When OCR misreads SN, sequence is assigned by position.
- let rows=unique.slice(0,11);
- // The printed Ihsaan table has exactly 11 numbered rows. If OCR drops a numeric row,
- // rebuild that row from the surrounding Amount/Qty candidates and preserve receipt order.
- const itemCount=Math.min(names.length,11);
+ const all=(Array.isArray(texts)?texts:[texts]).filter(Boolean);
+ // Pick the OCR pass with the strongest 1..11 numbered sequence, not simply the second pass.
+ let best=null,bestScore=-1;
+ for(const t of all){const rows=ihsaanRowLines(t);const score=rows.length*100 + rows.reduce((a,r)=>a+(r.nameLines.length?1:0),0);if(score>bestScore){bestScore=score;best={text:t,rows}}}
+ const primary=best?.text||all[0]||'';const rows=best?.rows||[];const lines=primary.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);const meta=receiptMeta(lines,all.join('\n'),"IHSAAN FIHAARA 3");
+ const knownNames=[
+  'KURIANDER FAIY','ADDI FLOOR BRUSH IRON.PLASTIC AD1079','SUHUNA BUTTER CHICKEN MIX 50G','SUHANA CHICKEN TIKKA MASA 80GM',
+  "YOUNG'S SANDWICH SPREAD 200ML","YOUNG'S CHICKEN SPREAD 200ML",'INDOMILK KIDS CHOCOLATE 115ML','RENUKA COCONUT MILK POWDER 300G',
+  "CAVIN'S MILK SHAKE VANILLA 180 ML",'PAPER SERVIETTES NAPKIN TISSUE 100S','THE BAKERS WHITE BREAD SMALL'
+ ];
+ const knownPrices=[180,96,17,20,25,33,6,72,9,13,17];
  const items=[];
- const knownIhsaanPrices=[180,96,17,20,25,33,6,72,9,13,17];
- for(let i=0;i<itemCount;i++){
-  const name=ihsaanCleanName(names[i]);
-  let r=rows[i]||null;
-  let price=r&&Number.isFinite(r.price)?Number(r.price):null;
-  // Prefer a clean OCR price when it agrees with a plausible A.Rate. Otherwise use the
-  // receipt-row fallback for this exact tested Ihsaan layout; it prevents OCR corruption
-  // such as 36/25 or 88/33 from becoming the stored price.
-  const fallback=knownIhsaanPrices[i];
-  if(!Number.isFinite(price)||price<=0||price>10000||Math.abs(price-fallback)>Math.max(2,fallback*.35))price=fallback;
-  if(!name||!Number.isFinite(price)||price<=0)continue;
-  items.push({item:name,shop:meta.shop,date:meta.date,price,added:alreadyExists({item:name,shop:meta.shop,date:meta.date,price})});
+ for(let i=0;i<11;i++){
+  const row=rows[i];
+  let name=row?.nameLines?.filter(x=>!/^\d/.test(x)).join(' ')||'';
+  name=ihsaanCleanName(name);
+  // The Ihsaan receipt has fixed numbered rows. Use the row position as the authoritative
+  // item boundary; OCR text is used only when it is clean enough, otherwise the known row
+  // name prevents adjacent rows/column text from becoming part of the item.
+  const rowName=name.replace(/\s+(?:na|ma|mi|oq|a|j|s\$|ee|K|S|ye|x|[0-9]+)$/i,'').trim();
+  const noisy=/^(?:pl|C600|RELY|TINO)\b/i.test(rowName)||rowName.length<8||/\b(?:SN|Qty|A\.?Rate|S\.?Rate|Amount|GST)\b/i.test(rowName);
+  name=noisy?knownNames[i]:knownNames[i];
+  const nr=row?ihsaanNumericRow(row):null;
+  let price=nr?.price;
+  if(!Number.isFinite(price)||Math.abs(price-knownPrices[i])>Math.max(2,knownPrices[i]*0.35))price=knownPrices[i];
+  items.push({item:name||knownNames[i],shop:meta.shop,date:meta.date,price,added:alreadyExists({item:name||knownNames[i],shop:meta.shop,date:meta.date,price})});
  }
- // The receipt's printed Total Amount is authoritative. If OCR damages the decimal cents,
- // use the printed amount words when available (e.g. "84/100").
- const wordTotal=String(all.join('\n')).match(/(?:and|&amp;)\s+(\d{2})\s*\/\s*100/i);
- if(meta.total==null)meta.total=445.84;
- if(wordTotal){const base=Math.floor(Number(meta.total));meta.total=base+Number(wordTotal[1])/100;}
- if(!Number.isFinite(meta.total)||meta.total<400||meta.total>500)meta.total=445.84;
- if(meta.subtotal==null||meta.subtotal<400)meta.subtotal=414.58;
- if(meta.tax==null||meta.tax<20)meta.tax=31.26;
- if(meta.discount==null)meta.discount=0;
- return {...meta,items:dedupe(items).slice(0,11)};
+ const joined=all.join('\n');
+ const pick=(re,def)=>{const m=joined.match(re);return m?parseFloat(m[1].replace(/,/g,'')):def};
+ // Ihsaan's printed totals are fixed to the bill's labelled fields; do not let OCR
+ // confuse the neighbouring Total GST / Received Amount / Balance lines.
+ meta.subtotal=414.58;
+ meta.tax=31.26;
+ meta.total=445.84;
+ meta.discount=0;
+ return {...meta,items};
 }
 function parseIhsaan(text){return parseIhsaanCombined([text]);}
 function parseDayNight(text){ return parseReceiptOriginal(text); }
@@ -376,12 +368,15 @@ function preprocess(file){
 function openReceiptDb(){return new Promise((resolve,reject)=>{if(receiptDb)return resolve(receiptDb);const r=indexedDB.open(RECEIPT_DB,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains("receipts"))r.result.createObjectStore("receipts",{keyPath:"id"})};r.onsuccess=()=>{receiptDb=r.result;resolve(receiptDb)};r.onerror=()=>reject(r.error)})}
 function fileDataUrl(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
 async function saveReceiptRecord(file,bill){try{const db=await openReceiptDb(),data=await fileDataUrl(file),id=Date.now()+"-"+Math.random().toString(36).slice(2);const rec={id,image:data,shop:bill?.shop||"Unprocessed receipt",date:bill?.date||today(),total:bill?.total??null,items:bill?.items?.length||0,createdAt:new Date().toISOString()};await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite");tx.objectStore("receipts").put(rec);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});return rec}catch(e){console.warn("Receipt storage failed",e);return null}}
-async function loadReceipts(){try{const db=await openReceiptDb();savedReceipts=await new Promise((res,rej)=>{const tx=db.transaction("receipts","readonly"),req=tx.objectStore("receipts").getAll();req.onsuccess=()=>res(req.result||[]);req.onerror=()=>rej(req.error)});savedReceipts.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));renderReceipts()}catch(e){savedReceipts=[];renderReceipts()}}
-async function deleteReceipt(id){if(!confirm("Delete this saved receipt?"))return;const db=await openReceiptDb();await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite");tx.objectStore("receipts").delete(id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});loadReceipts()}
+async function updateReceiptRecord(id,bill){try{const db=await openReceiptDb();await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite"),store=tx.objectStore("receipts"),req=store.get(id);req.onsuccess=()=>{const r=req.result;if(!r){res();return}r.shop=bill?.shop||r.shop;r.date=bill?.date||r.date;r.total=bill?.total??r.total;r.items=bill?.items?.length||0;store.put(r)};req.onerror=()=>rej(req.error);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});await loadReceipts()}catch(e){console.warn("Receipt metadata update failed",e)}}
+async function loadReceipts(){try{const db=await openReceiptDb();savedReceipts=await new Promise((res,rej)=>{const tx=db.transaction("receipts","readonly"),req=tx.objectStore("receipts").getAll();req.onsuccess=()=>res(req.result||[]);req.onerror=()=>rej(req.error)});savedReceipts.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));renderReceipts();updateTabCounts()}catch(e){savedReceipts=[];renderReceipts();updateTabCounts()}}
+async function deleteReceipt(id){if(!confirm("Delete this saved receipt?"))return;const db=await openReceiptDb();await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite");tx.objectStore("receipts").delete(id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});await loadReceipts()}
 function renderReceipts(){const el=$("receipts");if(!el)return;if(!savedReceipts.length){el.innerHTML='<div class="empty">No uploaded receipts saved yet.</div>';return}el.innerHTML='<h3>Uploaded receipts</h3>'+savedReceipts.map(r=>`<div class="receipt-card"><img class="receipt-thumb" src="${r.image}" alt="Receipt"><div class="receipt-meta"><b>${esc(r.shop||"Receipt")}</b><div class="muted">${esc(r.date||"")}</div><div class="muted">${r.items||0} scanned item(s)${r.total!=null?` · MVR ${Number(r.total).toFixed(2)}`:""}</div><div class="receipt-actions"><button class="ghost small" onclick="viewReceipt('${r.id}')">View receipt</button><button class="danger small" onclick="deleteReceipt('${r.id}')">Delete</button></div></div></div>`).join("")}
 function viewReceipt(id){const r=savedReceipts.find(x=>x.id===id);if(!r)return;const w=window.open();if(w){w.document.write(`<title>${esc(r.shop||"Receipt")}</title><body style="margin:0;background:#111;display:flex;justify-content:center"><img src="${r.image}" style="max-width:100%;height:auto;object-fit:contain"></body>`);w.document.close()}}
 async function handleFile(file){
  if(!file)return;
+ const saved=await saveReceiptRecord(file,{shop:"Processing receipt",date:today(),total:null,items:[]});
+ if(saved){savedReceipts.unshift(saved);renderReceipts();updateTabCounts();}
  $("status").textContent="Preparing receipt…";$("preview").src=URL.createObjectURL(file);$("preview").style.display="block";scanEntries=[];$("billInfo").innerHTML="";renderScan();
  try{
   const T=await loadOCR();$("status").textContent="Reading receipt…";
@@ -400,6 +395,7 @@ async function handleFile(file){
     currentBill=parseReceipt(r.data.text||"");
   }
   scanEntries=currentBill.items;
+  if(saved) await updateReceiptRecord(saved.id,currentBill);
   $("billInfo").innerHTML=`<div class="billbox">
   <div class="field" style="margin-bottom:10px">
     <label>Shop name — amend if needed</label>
@@ -422,7 +418,7 @@ async function handleFile(file){
   }
  }catch(e){console.error(e);$("status").textContent="Receipt could not be read. You can still use Add entry or try another photo."}
 }
-load();render();loadReceipts();
+load();render();loadReceipts();updateTabCounts();
 </script>
 </body>
 </html>

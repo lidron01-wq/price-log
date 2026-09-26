@@ -16,6 +16,11 @@ input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px
 .btnrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}button{font:600 14px -apple-system,sans-serif;border:0;border-radius:8px;padding:11px 15px;cursor:pointer}
 .primary{background:var(--teal);color:var(--paper);flex:1}.ghost{background:transparent;color:var(--teal);border:1px solid var(--teal)}.danger{color:#b33;background:transparent;border:1px solid #b33}.small{padding:7px 10px;font-size:12px}
 .status{font-size:13px;color:var(--dim);margin-top:9px}.preview{display:none;width:100%;max-height:300px;object-fit:contain;margin-top:10px;border:1px solid var(--line);border-radius:8px}
+.last-bill-card{margin:16px 0;padding:16px;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--card) 88%,transparent)}
+.last-bill-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.last-bill-title{font-weight:800;font-size:17px;margin-bottom:4px}
+.last-bill-shop{font-weight:700;font-size:15px;margin-bottom:3px}
+@media(max-width:520px){.last-bill-head{align-items:flex-start;flex-direction:column}.last-bill-head .danger{width:100%}}
 .tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;position:sticky;bottom:8px;z-index:20;padding:7px;background:color-mix(in srgb,var(--card) 94%,transparent);border:1px solid var(--line);border-radius:16px;margin:24px 0 14px;box-shadow:0 8px 24px rgba(0,0,0,.14);backdrop-filter:blur(12px)}.tab{position:relative;background:transparent;color:var(--dim);border:0;border-radius:11px;padding:10px 2px;min-height:46px;white-space:nowrap;font-size:10px;font-weight:650;line-height:1.1}.tab.active{background:var(--teal);color:var(--paper);box-shadow:0 3px 10px rgba(0,0,0,.12)}.tab .count{position:absolute;top:3px;right:3px;display:inline-flex;min-width:16px;height:16px;padding:0 3px;align-items:center;justify-content:center;margin:0;border-radius:99px;font-size:9px;font-weight:700;background:color-mix(in srgb,var(--dim) 18%,transparent);color:inherit}.tab.active .count{background:rgba(255,255,255,.2)}@media(max-width:430px){.tabs{gap:3px;padding:6px}.tab{font-size:9.5px;padding:10px 1px;min-height:44px}.tab .count{top:2px;right:2px;min-width:15px;height:15px;padding:0 3px;font-size:8px}}
 .tab-content{min-height:20px}.tab-content section{width:100%}.empty{color:var(--dim);font-size:14px;padding:20px 4px}.category-head{font-size:13px;font-weight:700;color:var(--coral);margin:18px 2px 8px}.item-group{overflow:hidden;margin-bottom:12px}.item-head{padding:12px 14px;font-weight:700;border-bottom:1px solid var(--line)}.entry{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:14px}.entry:last-child{border:0}.date{color:var(--dim);font-size:11px}.price{font-weight:700}.entry-actions{display:flex;gap:5px;align-items:center}.entry-actions button{padding:5px 8px;font-size:12px}
 .candidates{margin-top:12px}.cand{display:flex;align-items:center;gap:7px;padding:9px;margin-top:6px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}.cand.new{border-color:var(--good)}.cand-text{flex:1;overflow:hidden;text-overflow:ellipsis}.cand-price{font-weight:700;white-space:nowrap}.badge{font-size:10px;padding:3px 5px;border-radius:5px;background:var(--good);color:white}
@@ -178,7 +183,7 @@ function renderItems(){
    const rows=cats[c][k].sort((a,b)=>Number(a.price)-Number(b.price)),label=rows[0].item,min=Number(rows[0].price);
    return `<div class="item-group"><div class="item-head">${esc(label)}</div>${rows.map(r=>{
      const price=Number(r.price); const shown=Number.isFinite(price)?price:0;
-     return `<div class="entry"><div><b>${esc(r.shop||"Unknown shop")}</b> <span class="date">${esc(r.date||"")}</span></div><div class="entry-actions"><span class="price" style="color:${shown===min?'var(--good)':'inherit'}">MVR ${shown.toFixed(2)}</span><button class="ghost" onclick="openEdit(${r._index})">Edit</button><button class="danger" onclick="delEntry(${r.i})">×</button></div></div>`;
+     return `<div class="entry"><div><b>${esc(r.shop||"Unknown shop")}</b> <span class="date">${esc(r.date||"")}</span></div><div class="entry-actions"><span class="price" style="color:${shown===min?'var(--good)':'inherit'}">MVR ${shown.toFixed(2)}</span><button class="ghost" onclick="openEdit(${r._index})">Edit</button><button class="danger" onclick="delEntry(${r._index})">×</button></div></div>`;
    }).join("")}</div>`
   }).join("")
  }).join("");
@@ -206,6 +211,25 @@ function renderSpending(){
    return `<div class="month-card"><div><b>${label}</b><span class="count">${m[k].count} entries</span></div><b>MVR ${m[k].total.toFixed(2)}</b></div>`
  }).join("")||'<div class="empty">No entries yet.</div>';
 }
+async function deleteLastBill(){
+ const bill=savedReceipts&&savedReceipts[0];
+ if(!bill)return;
+ const keys=Array.isArray(bill.entryKeys)?bill.entryKeys:[];
+ const shop=String(bill.shop||"").trim().toLowerCase();
+ const date=String(bill.date||"");
+ const matching=keys.length?entries.filter(e=>keys.includes(duplicateKey(e))):entries.filter(e=>shop&&date&&String(e.shop||"").trim().toLowerCase()===shop&&String(e.date||"")===date);
+ const removed=matching.length;
+ if(!confirm(`Delete the last bill from ${bill.shop||"this shop"}?\n\nThis will remove the saved receipt and ${removed} matching price entr${removed===1?"y":"ies"}.`))return;
+ if(keys.length){const keySet=new Set(keys);entries=entries.filter(e=>!keySet.has(duplicateKey(e)));}
+ else if(shop&&date)entries=entries.filter(e=>!(String(e.shop||"").trim().toLowerCase()===shop&&String(e.date||"")===date));
+ try{
+   const db=await openReceiptDb();
+   await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite");tx.objectStore("receipts").delete(bill.id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});
+ }catch(e){console.warn("Receipt deletion failed",e)}
+ save();
+ await loadReceipts();
+ render();
+}
 function renderDash(){
  const now=today().slice(0,7);
  const total=entries.filter(e=>String(e.date||"").slice(0,7)===now).reduce((a,e)=>{
@@ -213,7 +237,9 @@ function renderDash(){
  },0);
  const items=new Set(entries.map(e=>String(e.item||"").trim().toLowerCase()).filter(Boolean)).size;
  const recent=entries.slice().sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,5);
- $("dash").innerHTML=`<div class="stat-grid"><div class="stat-card"><div class="num">MVR ${total.toFixed(2)}</div><div class="lbl">Spent this month</div></div><div class="stat-card"><div class="num">${items}</div><div class="lbl">Items tracked</div></div><div class="stat-card"><div class="num">${entries.length}</div><div class="lbl">Entries</div></div></div><h3>Recent entries</h3><div class="recent">${recent.map(e=>{const price=Number(e.price);const shown=Number.isFinite(price)?price:0;return `<div><span>${esc(e.item||"Unnamed item")} · ${esc(e.shop||"Unknown shop")}</span><b>MVR ${shown.toFixed(2)}</b></div>`}).join("")||'<div>No entries yet.</div>'}</div>`;
+ const bill=savedReceipts&&savedReceipts.length?savedReceipts[0]:null;
+ const billBlock=bill?`<div class="last-bill-card"><div class="last-bill-head"><div><div class="last-bill-title">Last bill</div><div class="last-bill-shop">${esc(bill.shop||"Receipt")}</div><div class="muted">${esc(bill.date||"")} · ${bill.items||0} item(s)${bill.total!=null?` · MVR ${Number(bill.total).toFixed(2)}`:""}</div></div><button class="danger small" onclick="deleteLastBill()">Delete whole bill</button></div><div class="muted" style="margin-top:8px">Deletes this saved receipt and its matching price entries.</div></div>`:'<div class="last-bill-card"><div class="last-bill-title">Last bill</div><div class="muted">No uploaded bill yet.</div></div>';
+ $("dash").innerHTML=`<div class="stat-grid"><div class="stat-card"><div class="num">MVR ${total.toFixed(2)}</div><div class="lbl">Spent this month</div></div><div class="stat-card"><div class="num">${items}</div><div class="lbl">Items tracked</div></div><div class="stat-card"><div class="num">${entries.length}</div><div class="lbl">Entries</div></div></div>${billBlock}<h3>Recent entries</h3><div class="recent">${recent.map(e=>{const price=Number(e.price);const shown=Number.isFinite(price)?price:0;return `<div><span>${esc(e.item||"Unnamed item")} · ${esc(e.shop||"Unknown shop")}</span><b>MVR ${shown.toFixed(2)}</b></div>`}).join("")||'<div>No entries yet.</div>'}</div>`;
 }
 
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
@@ -465,7 +491,7 @@ function preprocess(file){
 function openReceiptDb(){return new Promise((resolve,reject)=>{if(receiptDb)return resolve(receiptDb);const r=indexedDB.open(RECEIPT_DB,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains("receipts"))r.result.createObjectStore("receipts",{keyPath:"id"})};r.onsuccess=()=>{receiptDb=r.result;resolve(receiptDb)};r.onerror=()=>reject(r.error)})}
 function fileDataUrl(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
 async function saveReceiptRecord(file,bill){try{const db=await openReceiptDb(),data=await fileDataUrl(file),id=Date.now()+"-"+Math.random().toString(36).slice(2);const rec={id,image:data,shop:bill?.shop||"Unprocessed receipt",date:bill?.date||today(),total:bill?.total??null,items:bill?.items?.length||0,createdAt:new Date().toISOString()};await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite");tx.objectStore("receipts").put(rec);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});return rec}catch(e){console.warn("Receipt storage failed",e);return null}}
-async function updateReceiptRecord(id,bill){try{const db=await openReceiptDb();await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite"),store=tx.objectStore("receipts"),req=store.get(id);req.onsuccess=()=>{const r=req.result;if(!r){res();return}r.shop=bill?.shop||r.shop;r.date=bill?.date||r.date;r.total=bill?.total??r.total;r.items=bill?.items?.length||0;store.put(r)};req.onerror=()=>rej(req.error);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});await loadReceipts()}catch(e){console.warn("Receipt metadata update failed",e)}}
+async function updateReceiptRecord(id,bill){try{const db=await openReceiptDb();await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite"),store=tx.objectStore("receipts"),req=store.get(id);req.onsuccess=()=>{const r=req.result;if(!r){res();return}r.shop=bill?.shop||r.shop;r.date=bill?.date||r.date;r.total=bill?.total??r.total;r.items=bill?.items?.length||0;r.entryKeys=(bill?.items||[]).map(duplicateKey);store.put(r)};req.onerror=()=>rej(req.error);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});await loadReceipts()}catch(e){console.warn("Receipt metadata update failed",e)}}
 async function loadReceipts(){try{const db=await openReceiptDb();savedReceipts=await new Promise((res,rej)=>{const tx=db.transaction("receipts","readonly"),req=tx.objectStore("receipts").getAll();req.onsuccess=()=>res(req.result||[]);req.onerror=()=>rej(req.error)});savedReceipts.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));renderReceipts();updateTabCounts()}catch(e){savedReceipts=[];renderReceipts();updateTabCounts()}}
 async function deleteReceipt(id){if(!confirm("Delete this saved receipt?"))return;const db=await openReceiptDb();await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite");tx.objectStore("receipts").delete(id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});await loadReceipts()}
 function renderReceipts(){const el=$("receipts");if(!el)return;if(!savedReceipts.length){el.innerHTML='<div class="empty">No uploaded receipts saved yet.</div>';return}el.innerHTML='<h3>Uploaded receipts</h3>'+savedReceipts.map(r=>`<div class="receipt-card"><img class="receipt-thumb" src="${r.image}" alt="Receipt"><div class="receipt-meta"><b>${esc(r.shop||"Receipt")}</b><div class="muted">${esc(r.date||"")}</div><div class="muted">${r.items||0} scanned item(s)${r.total!=null?` · MVR ${Number(r.total).toFixed(2)}`:""}</div><div class="receipt-actions"><button class="ghost small" onclick="viewReceipt('${r.id}')">View receipt</button><button class="danger small" onclick="deleteReceipt('${r.id}')">Delete</button></div></div></div>`).join("")}

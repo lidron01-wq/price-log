@@ -450,7 +450,7 @@ function parseReceipt(text){
    const top=lines.slice(0,12);
    const preferred=top.filter(x=>!badShop.test(x)&&!/[0-9]{5,}/.test(x)&&/[A-Za-z]{3}/.test(x));
    // Strong shop-name signals first.
-   const strong=preferred.find(x=>/\b(mart|market|store|shop|fihaara|fithaara|supermarket)\b/i.test(x));
+   const strong=preferred.find(x=>/\b(day\s*night\s*mart|mart|market|store|shop|fihaara|fithaara|supermarket)\b/i.test(x));
    if(strong)return cleanName(strong);
    // Otherwise prefer a short, mostly-uppercase first business-looking line.
    const scored=preferred.map(x=>{const letters=(x.match(/[A-Za-z]/g)||[]).length;const upper=(x.match(/[A-Z]/g)||[]).length;return {x,score:(upper/Math.max(1,letters))*4-Math.max(0,x.length-28)*.05}}).sort((a,b)=>b.score-a.score);
@@ -613,7 +613,7 @@ function preprocess(file,mode="normal"){
   const img=new Image(),url=URL.createObjectURL(file);
   img.onload=()=>{
    const w=img.naturalWidth,h=img.naturalHeight;
-   const target=Math.min(3200,Math.max(w,h)*1.8);
+   const target=Math.min(4200,Math.max(w,h)*2.2);
    const scale=Math.max(1,target/Math.max(w,h));
    const c=document.createElement("canvas"); c.width=Math.round(w*scale); c.height=Math.round(h*scale);
    const x=c.getContext("2d",{willReadFrequently:true});
@@ -636,30 +636,56 @@ function preprocess(file,mode="normal"){
 }
 async function handleFile(file){
  if(!file)return;
- const pendingReceiptId=crypto.randomUUID();
+ const pendingReceiptId=(crypto.randomUUID?crypto.randomUUID():String(Date.now())+Math.random().toString(16).slice(2));
  currentBill={receiptId:pendingReceiptId};
- await saveReceiptRecord(file,{id:pendingReceiptId,shop:"Unprocessed receipt",date:today()});
+ try{await saveReceiptRecord(file,{id:pendingReceiptId,shop:"Unprocessed receipt",date:today()});}catch(e){console.warn("Could not save receipt image",e)}
  renderReceipts();
- $("status").textContent="Preparing receipt…";$("preview").src=URL.createObjectURL(file);$("preview").style.display="block";scanEntries=[];$("billInfo").innerHTML="";renderScan();
+ $("status").textContent="Preparing receipt…";
+ try{$("preview").src=URL.createObjectURL(file);$("preview").style.display="block";}catch(e){}
+ scanEntries=[];$("billInfo").innerHTML="";renderScan();
  try{
-  const T=await loadOCR();$("status").textContent="Reading receipt…";
+  const T=await loadOCR();
+  $("status").textContent="Reading receipt…";
+  // Multiple layouts and preprocessing passes. A failed OCR pass must NOT abort the whole scan.
+  // Tesseract recommends adequate resolution/rescaling and different segmentation modes for receipts.
   const attempts=[
-   ["normal","6"],["high","6"],["normal","4"],["high","11"],["bw","6"]
+   ["normal",6],["high",6],["normal",11],["high",11],["normal",4],["bw",6]
   ];
   let best={items:[],shop:"Unknown shop",date:today()};
+  let lastError=null;
   for(let ai=0;ai<attempts.length;ai++){
    const [mode,psm]=attempts[ai];
-   $("status").textContent=`Reading receipt… ${ai+1}/${attempts.length}`;
-   const processed=await preprocess(file,mode);
-   const r=await T.recognize(processed,"eng",{logger:m=>{if(m.status==="recognizing text")$("status").textContent=`Reading receipt… ${ai+1}/${attempts.length} ${Math.round((m.progress||0)*100)}%`},tessedit_pageseg_mode:psm});
-   const parsed=parseReceipt(r.data.text||"");
-   if((parsed.items||[]).length>(best.items||[]).length || (!best.subtotal&&parsed.subtotal)) best=parsed;
-   if(best.items.length>=9) break;
+   try{
+    $("status").textContent=`Reading receipt… ${ai+1}/${attempts.length}`;
+    const processed=await preprocess(file,mode);
+    const r=await T.recognize(processed,"eng",{
+      logger:m=>{if(m.status==="recognizing text")$("status").textContent=`Reading receipt… ${ai+1}/${attempts.length} ${Math.round((m.progress||0)*100)}%`;},
+      tessedit_pageseg_mode:String(psm),
+      preserve_interword_spaces:"1"
+    });
+    const raw=r?.data?.text||"";
+    const parsed=parseReceipt(raw);
+    parsed._ocrText=raw;
+    // Prefer a pass with more real-looking items; if counts tie, prefer one with bill totals.
+    const score=(parsed.items?.length||0)*100+(parsed.total!=null?20:0)+(parsed.subtotal!=null?10:0)+(parsed.shop&&parsed.shop!=="Unknown shop"?5:0);
+    const bestScore=(best.items?.length||0)*100+(best.total!=null?20:0)+(best.subtotal!=null?10:0)+(best.shop&&best.shop!=="Unknown shop"?5:0);
+    if(score>bestScore)best=parsed;
+    if(best.items.length>=11)break;
+   }catch(attemptError){
+    lastError=attemptError;
+    console.warn("OCR attempt failed",mode,psm,attemptError);
+   }
   }
   const receiptId=currentBill?.receiptId||pendingReceiptId;
   currentBill=best;
   currentBill.receiptId=receiptId;
   currentBill.id=billId(currentBill);
+  if(!currentBill.items?.length){
+    await updateSavedReceiptMeta().catch(()=>{});
+    $("status").textContent=lastError?"OCR could not complete. Please try the same receipt again or use a clearer/cropped photo.":"No receipt items were detected. Please try a closer, well-lit photo.";
+    $("billInfo").innerHTML=`<div class="notice">The receipt image has been saved in <b>Receipts</b>, but no items were detected. Try uploading a close-up of the receipt without the surrounding background.</div>`;
+    return;
+  }
   await updateSavedReceiptMeta();
   scanEntries=currentBill.items;
   $("billInfo").innerHTML=`<div class="billbox">
@@ -684,7 +710,11 @@ async function handleFile(file){
       renderScan();
     });
   }
- }catch(e){console.error(e);$("status").textContent="Receipt could not be read. You can still use Add entry or try another photo."}
+ }catch(e){
+  console.error(e);
+  $("status").textContent="Receipt could not be read. The image is saved in Receipts. Please try again with a closer/cropped photo.";
+  $("billInfo").innerHTML='<div class="notice">The receipt image was saved. OCR failed before any items could be extracted.</div>';
+ }
 }
 $("itemSearch").addEventListener("input",renderItemSearch);
 load();applyAutoCategories();render();renderItemSearch();renderShopping();renderReceipts();

@@ -171,19 +171,23 @@ function renderItems(){
    const k=item.toLowerCase();
    cats[c]??={};
    cats[c][k]??=[];
-   cats[c][k].push({...e,item});
+   cats[c][k].push({...e,item,_index:i});
  });
  $("items").innerHTML=Object.keys(cats).sort().map(c=>{
   return `<div class="category-head">${esc(c)}</div>`+Object.keys(cats[c]).sort().map(k=>{
    const rows=cats[c][k].sort((a,b)=>Number(a.price)-Number(b.price)),label=rows[0].item,min=Number(rows[0].price);
    return `<div class="item-group"><div class="item-head">${esc(label)}</div>${rows.map(r=>{
      const price=Number(r.price); const shown=Number.isFinite(price)?price:0;
-     return `<div class="entry"><div><b>${esc(r.shop||"Unknown shop")}</b> <span class="date">${esc(r.date||"")}</span></div><div class="entry-actions"><span class="price" style="color:${shown===min?'var(--good)':'inherit'}">MVR ${shown.toFixed(2)}</span><button class="ghost" onclick="openEdit(${r.i})">Edit</button><button class="danger" onclick="delEntry(${r.i})">×</button></div></div>`;
+     return `<div class="entry"><div><b>${esc(r.shop||"Unknown shop")}</b> <span class="date">${esc(r.date||"")}</span></div><div class="entry-actions"><span class="price" style="color:${shown===min?'var(--good)':'inherit'}">MVR ${shown.toFixed(2)}</span><button class="ghost" onclick="openEdit(${r._index})">Edit</button><button class="danger" onclick="delEntry(${r.i})">×</button></div></div>`;
    }).join("")}</div>`
   }).join("")
  }).join("");
 }
-function delEntry(i){if(confirm("Delete this entry?")){entries.splice(i,1);save();render()}}
+function delEntry(i){
+ const idx=Number(i);
+ if(!Number.isInteger(idx)||idx<0||idx>=entries.length)return;
+ if(confirm("Delete this entry?")){entries.splice(idx,1);save();render();}
+}
 
 function renderShops(){
  if(!entries.length){$("shops").innerHTML='<div class="empty">No entries yet.</div>';return}
@@ -439,7 +443,13 @@ function renderScan(){
  ${scanEntries.map((x,i)=>`<div class="cand ${x.added?'':'new'}"><span class="cand-text">${esc(x.item)}<br><small style="color:var(--dim)">${esc(x.shop)}</small></span>${x.added?'<span class="badge">Already added</span>':""}<span class="cand-price">MVR ${x.price.toFixed(2)}</span><button class="ghost small" onclick="editCandidate(${i})">${x.added?"View/Edit":"Edit"}</button>${x.added?"":`<button class="ghost small" onclick="addCandidate(${i})">Add</button>`}</div>`).join("")}`;
  if($("addMissing"))$("addMissing").onclick=()=>scanEntries.forEach((x,i)=>{if(!x.added)addCandidate(i)});
 }
-function addCandidate(i){const x=scanEntries[i];if(x.added)return;entries.push({item:x.item,category:$("category").value.trim(),shop:x.shop,price:x.price,date:x.date});x.added=true;save();render();renderScan()}
+function addCandidate(i){
+ const x=scanEntries[i];
+ if(!x||x.added)return;
+ if(alreadyExists(x)){x.added=true;renderScan();return;}
+ entries.push({item:x.item,category:$("category").value.trim(),shop:x.shop,price:x.price,date:x.date});
+ x.added=true;save();render();renderScan();
+}
 function editCandidate(i){
  const x=scanEntries[i];currentEdit=-1;$("mItem").value=x.item;$("mCat").value=$("category").value;$("mShop").value=x.shop;$("mPrice").value=x.price;$("mDate").value=x.date;$("modal").classList.add("open");
  $("saveEdit").onclick=()=>{x.item=$("mItem").value.trim();x.shop=$("mShop").value.trim();x.price=parseFloat($("mPrice").value);x.date=$("mDate").value||today();x.category=$("mCat").value.trim();x.added=alreadyExists(x);if(!x.added){entries.push({item:x.item,category:x.category,shop:x.shop,price:x.price,date:x.date});x.added=true;save();render()}$("modal").classList.remove("open");renderScan()}

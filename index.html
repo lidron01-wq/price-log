@@ -165,11 +165,21 @@ function importShoppingFromUrl(){
 function renderItems(){
  if(!entries.length){$("items").innerHTML='<div class="empty">No entries yet.</div>';return}
  const cats={};
- entries.forEach((e,i)=>{const c=e.category||"Uncategorized";const k=e.item.trim().toLowerCase();(cats[c]??={});(cats[c][k]??=[]).push({...e,i})});
+ entries.forEach((e,i)=>{
+   const item=String(e.item??"").trim()||"Unnamed item";
+   const c=String(e.category||"Uncategorized");
+   const k=item.toLowerCase();
+   cats[c]??={};
+   cats[c][k]??=[];
+   cats[c][k].push({...e,item});
+ });
  $("items").innerHTML=Object.keys(cats).sort().map(c=>{
   return `<div class="category-head">${esc(c)}</div>`+Object.keys(cats[c]).sort().map(k=>{
-   const rows=cats[c][k].sort((a,b)=>a.price-b.price),label=rows[0].item,min=rows[0].price;
-   return `<div class="item-group"><div class="item-head">${esc(label)}</div>${rows.map(r=>`<div class="entry"><div><b>${esc(r.shop)}</b> <span class="date">${esc(r.date)}</span></div><div class="entry-actions"><span class="price" style="color:${r.price===min?'var(--good)':'inherit'}">MVR ${r.price.toFixed(2)}</span><button class="ghost" onclick="openEdit(${r.i})">Edit</button><button class="danger" onclick="delEntry(${r.i})">×</button></div></div>`).join("")}</div>`
+   const rows=cats[c][k].sort((a,b)=>Number(a.price)-Number(b.price)),label=rows[0].item,min=Number(rows[0].price);
+   return `<div class="item-group"><div class="item-head">${esc(label)}</div>${rows.map(r=>{
+     const price=Number(r.price); const shown=Number.isFinite(price)?price:0;
+     return `<div class="entry"><div><b>${esc(r.shop||"Unknown shop")}</b> <span class="date">${esc(r.date||"")}</span></div><div class="entry-actions"><span class="price" style="color:${shown===min?'var(--good)':'inherit'}">MVR ${shown.toFixed(2)}</span><button class="ghost" onclick="openEdit(${r.i})">Edit</button><button class="danger" onclick="delEntry(${r.i})">×</button></div></div>`;
+   }).join("")}</div>`
   }).join("")
  }).join("");
 }
@@ -181,13 +191,25 @@ function renderShops(){
  $("shops").innerHTML='<div class="shop-grid">'+Object.keys(shops).sort().map(s=>`<div class="shop-card"><div class="name">${esc(s)}</div><div class="stat">${shops[s]} entries logged</div></div>`).join("")+'</div>';
 }
 function renderSpending(){
- const m={};entries.forEach(e=>{const k=(e.date||"").slice(0,7);if(k)(m[k]??={total:0,count:0}),m[k].total+=e.price,m[k].count++});
- $("spending").innerHTML=Object.keys(m).sort().reverse().map(k=>{const [y,mo]=k.split("-");const label=new Date(+y,+mo-1,1).toLocaleDateString("en-US",{month:"long",year:"numeric"});return `<div class="month-card"><div><b>${label}</b><span class="count">${m[k].count} entries</span></div><b>MVR ${m[k].total.toFixed(2)}</b></div>`}).join("")||'<div class="empty">No entries yet.</div>';
+ const m={};
+ entries.forEach(e=>{
+   const k=String(e.date||"").slice(0,7); if(!k)return;
+   const price=Number(e.price); const amount=Number.isFinite(price)?price:0;
+   m[k]??={total:0,count:0}; m[k].total+=amount; m[k].count++;
+ });
+ $("spending").innerHTML=Object.keys(m).sort().reverse().map(k=>{
+   const [y,mo]=k.split("-");const label=new Date(+y,+mo-1,1).toLocaleDateString("en-US",{month:"long",year:"numeric"});
+   return `<div class="month-card"><div><b>${label}</b><span class="count">${m[k].count} entries</span></div><b>MVR ${m[k].total.toFixed(2)}</b></div>`
+ }).join("")||'<div class="empty">No entries yet.</div>';
 }
 function renderDash(){
- const now=today().slice(0,7),total=entries.filter(e=>e.date?.slice(0,7)===now).reduce((a,e)=>a+e.price,0),items=new Set(entries.map(e=>e.item.toLowerCase())).size;
- const recent=entries.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).slice(0,5);
- $("dash").innerHTML=`<div class="stat-grid"><div class="stat-card"><div class="num">MVR ${total.toFixed(2)}</div><div class="lbl">Spent this month</div></div><div class="stat-card"><div class="num">${items}</div><div class="lbl">Items tracked</div></div><div class="stat-card"><div class="num">${entries.length}</div><div class="lbl">Entries</div></div></div><h3>Recent entries</h3><div class="recent">${recent.map(e=>`<div><span>${esc(e.item)} · ${esc(e.shop)}</span><b>MVR ${e.price.toFixed(2)}</b></div>`).join("")||'<div>No entries yet.</div>'}</div>`;
+ const now=today().slice(0,7);
+ const total=entries.filter(e=>String(e.date||"").slice(0,7)===now).reduce((a,e)=>{
+   const price=Number(e.price); return a+(Number.isFinite(price)?price:0);
+ },0);
+ const items=new Set(entries.map(e=>String(e.item||"").trim().toLowerCase()).filter(Boolean)).size;
+ const recent=entries.slice().sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,5);
+ $("dash").innerHTML=`<div class="stat-grid"><div class="stat-card"><div class="num">MVR ${total.toFixed(2)}</div><div class="lbl">Spent this month</div></div><div class="stat-card"><div class="num">${items}</div><div class="lbl">Items tracked</div></div><div class="stat-card"><div class="num">${entries.length}</div><div class="lbl">Entries</div></div></div><h3>Recent entries</h3><div class="recent">${recent.map(e=>{const price=Number(e.price);const shown=Number.isFinite(price)?price:0;return `<div><span>${esc(e.item||"Unnamed item")} · ${esc(e.shop||"Unknown shop")}</span><b>MVR ${shown.toFixed(2)}</b></div>`}).join("")||'<div>No entries yet.</div>'}</div>`;
 }
 
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{

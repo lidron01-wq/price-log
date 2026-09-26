@@ -502,23 +502,51 @@ async function loadOCR(){
  if(window.Tesseract)return window.Tesseract;
  return new Promise((resolve,reject)=>{const s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";s.onload=()=>resolve(window.Tesseract);s.onerror=reject;document.head.appendChild(s)})
 }
-function preprocess(file){
- return new Promise(resolve=>{const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{const max=2200,scale=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight));const c=document.createElement("canvas");c.width=Math.round(img.naturalWidth*scale);c.height=Math.round(img.naturalHeight*scale);const x=c.getContext("2d");x.filter="grayscale(1) contrast(1.35)";x.drawImage(img,0,0,c.width,c.height);c.toBlob(b=>{URL.revokeObjectURL(url);resolve(b||file)},"image/jpeg",.92)};img.src=url})
+function preprocess(file,mode="normal"){
+ return new Promise(resolve=>{
+  const img=new Image(),url=URL.createObjectURL(file);
+  img.onload=()=>{
+   const w=img.naturalWidth,h=img.naturalHeight;
+   const target=Math.min(3200,Math.max(w,h)*1.8);
+   const scale=Math.max(1,target/Math.max(w,h));
+   const c=document.createElement("canvas"); c.width=Math.round(w*scale); c.height=Math.round(h*scale);
+   const x=c.getContext("2d",{willReadFrequently:true});
+   x.imageSmoothingEnabled=true; x.imageSmoothingQuality="high";
+   x.drawImage(img,0,0,c.width,c.height);
+   const im=x.getImageData(0,0,c.width,c.height),d=im.data;
+   for(let i=0;i<d.length;i+=4){
+    const g=(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
+    let v=g;
+    if(mode==="high") v=Math.max(0,Math.min(255,(g-128)*1.75+128));
+    else if(mode==="bw") v=g>155?255:0;
+    else v=Math.max(0,Math.min(255,(g-128)*1.35+128));
+    d[i]=d[i+1]=d[i+2]=v;
+   }
+   x.putImageData(im,0,0);
+   c.toBlob(b=>{URL.revokeObjectURL(url);resolve(b||file)},"image/jpeg",.95);
+  };
+  img.src=url;
+ })
 }
 async function handleFile(file){
  if(!file)return;
  $("status").textContent="Preparing receipt…";$("preview").src=URL.createObjectURL(file);$("preview").style.display="block";scanEntries=[];$("billInfo").innerHTML="";renderScan();
  try{
   const T=await loadOCR();$("status").textContent="Reading receipt…";
-  const processed=await preprocess(file);
-  const opts={logger:m=>{if(m.status==="recognizing text")$("status").textContent=`Reading receipt… ${Math.round((m.progress||0)*100)}%`}, tessedit_pageseg_mode:"6"};
-  let r=await T.recognize(processed,"eng",opts);
-  currentBill=parseReceipt(r.data.text||"");
-  if(currentBill.items.length<5){
-    const r2=await T.recognize(processed,"eng",{logger:m=>{if(m.status==="recognizing text")$("status").textContent=`Improving scan… ${Math.round((m.progress||0)*100)}%`}, tessedit_pageseg_mode:"11"});
-    const b2=parseReceipt(r2.data.text||"");
-    if(b2.items.length>currentBill.items.length) currentBill=b2;
+  const attempts=[
+   ["normal","6"],["high","6"],["normal","4"],["high","11"],["bw","6"]
+  ];
+  let best={items:[],shop:"Unknown shop",date:today()};
+  for(let ai=0;ai<attempts.length;ai++){
+   const [mode,psm]=attempts[ai];
+   $("status").textContent=`Reading receipt… ${ai+1}/${attempts.length}`;
+   const processed=await preprocess(file,mode);
+   const r=await T.recognize(processed,"eng",{logger:m=>{if(m.status==="recognizing text")$("status").textContent=`Reading receipt… ${ai+1}/${attempts.length} ${Math.round((m.progress||0)*100)}%`},tessedit_pageseg_mode:psm});
+   const parsed=parseReceipt(r.data.text||"");
+   if((parsed.items||[]).length>(best.items||[]).length || (!best.subtotal&&parsed.subtotal)) best=parsed;
+   if(best.items.length>=9) break;
   }
+  currentBill=best;
   currentBill.id=billId(currentBill);
   scanEntries=currentBill.items;
   $("billInfo").innerHTML=`<div class="billbox">

@@ -418,7 +418,14 @@ function fixOcrDigits(text){
 }
 
 function moneyNumbers(s){return [...s.matchAll(/(?:MVR\s*)?(\d{1,5}(?:[.,]\d{2}))/gi)].map(m=>parseFloat(m[1].replace(",",".")))}
-function guessDate(text){const m=text.match(/\b(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})\b/);if(!m)return today();let y=m[3];if(y.length===2)y="20"+y;return `${y}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`}
+function guessDate(text){
+ const s=String(text||"");
+ let m=s.match(/\b(\d{1,2})[-\/](\d{1,2})[-\/](\d{2,4})\b/);
+ if(m){let y=m[3];if(y.length===2)y="20"+y;return `${y}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;}
+ m=s.match(/\b(\d{1,2})[-\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[-\s,]+(\d{2,4})\b/i);
+ if(m){const months={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12};let y=m[3];if(y.length===2)y="20"+y;return `${y}-${String(months[m[2].toLowerCase()]).padStart(2,"0")}-${m[1].padStart(2,"0")}`;}
+ return today();
+}
 function guessShop(lines){
  const bad=/^(date|time|invoice|bill|receipt|subtotal|total|cash|change|tax|gst|qty|item|description|amount|register|cashier|type|temp|tin|phone|email|customer|print|powered|tax invoice|bill no)/i;
  const header=lines.slice(0,18).filter(x=>x.length>4&&!bad.test(x)&&/[A-Za-z]/.test(x)&&!/@/.test(x));
@@ -440,192 +447,378 @@ function alreadyExists(c){
 }
 
 function parseReceipt(text, ocrData=null){
- text=fixOcrDigits(text);
- const lines=text.split(/\r?\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
- const date=guessDate(text);
- let subtotal=null,tax=null,total=null,discount=null,pointsUsed=null,paymentAmount=null;
- const moneyNumbers=s=>[...String(s).matchAll(/(?:MVR\s*)?(\d{1,6}(?:[.,]\d{2}))/gi)].map(m=>parseFloat(m[1].replace(',','.')));
- for(const line of lines){
-   const low=line.toLowerCase(), nums=moneyNumbers(line); if(!nums.length)continue;
-   if(/sub\s*total/.test(low)) subtotal=nums[nums.length-1];
-   else if(/\b(total\s*gst|gst|tax|vat)\b/.test(low) && !/subtotal/.test(low)) tax=nums[nums.length-1];
-   else if(/\b(discount|disc)\b/.test(low)) discount=nums[nums.length-1];
-   else if(/\bpoints?\s*(used|redeemed)|\b(loyalty|reward)\s*(used|redeemed)|\b(redeem|redeemed|redemption)\b/.test(low)) pointsUsed=nums[nums.length-1];
-   else if(/\btotal\s*(?:\(\s*mvr\s*\)|mvr)?\b/i.test(low) && !/subtotal|total\s*gst|total\s*tax/.test(low)) total=nums[nums.length-1];
-   else if(/\b(received|paid|payment|cash|settled)\b/.test(low) && !/outstanding|balance/.test(low)) paymentAmount=nums[nums.length-1];
- }
- if(total==null && paymentAmount!=null) total=paymentAmount;
- if(total==null && subtotal!=null) total=Math.max(0,subtotal+(tax||0)-(discount||0)-(pointsUsed||0));
- const cleanName=s=>String(s||'').replace(/^[\s|_\-–—:.,]+|[\s|_\-–—:.,]+$/g,'').replace(/\s+/g,' ').trim();
- const stop=/^(sub\s*total|discount|total\s*(?:\(\s*mvr\s*\))?|gst|tax|plastic\s*bag|total\s*amount|received\s*amount|balance|outstanding|settled|thank|powered\s*by|print\s*by|card|cash|payment|register|cashier|type\s*sale|temp\s*no|customer|phone|email|tin|bill\s*no|bill\s*date|date|time)$/i;
- const bad=/^(sn|qty|a\.?\s*rate|s\.?\s*rate|amount|gst|item|description|total|subtotal)$/i;
- const looksName=s=>{s=cleanName(s); if(s.length<3||stop.test(s)||bad.test(s)||/@/.test(s))return false; if(!/[A-Za-z]{2,}/.test(s))return false; const digits=(s.match(/\d/g)||[]).length; return digits/s.length<.55};
- const make=(name,price,qty=null,lineTotal=null,gst=null)=>{
-   name=cleanName(name); price=Number(price);
-   if(!looksName(name)||!Number.isFinite(price)||price<=0||price>100000)return null;
-   const c={item:name,shop,date,price,qty:Number.isFinite(Number(qty))?Number(qty):null,lineTotal:Number.isFinite(Number(lineTotal))?Number(lineTotal):null,gst:Number.isFinite(Number(gst))?Number(gst):null};
-   c.added=alreadyExists(c); return c;
- };
- let shop='Unknown shop';
- const top=lines.slice(0,20).join(' ');
- if(/day\s*night\s*mart/i.test(top)) shop='DAY NIGHT MART HULHUMALE';
- else if(/ihsaan\s*f[i]?thaara|ihsaan\s*f[i]?haara/i.test(top)) shop='IHSAAN FIHAARA 3';
- else {
-   const candidate=lines.slice(0,12).find(x=>/[A-Za-z]{3}/.test(x)&&!stop.test(x)&&!/@/.test(x));
-   shop=cleanName(candidate||$('shop').value.trim()||'Unknown shop');
- }
- const found=[];
- const add=(c)=>{if(!c)return; const key=(c.item||'').toLowerCase().replace(/[^a-z0-9]+/g,''); if(!key)return; if(!found.some(x=>(x.item||'').toLowerCase().replace(/[^a-z0-9]+/g,'')===key && Math.abs(Number(x.price)-Number(c.price))<.02))found.push(c)};
+  const rawText=String(text||"");
+  const lines=rawText.split(/\r?\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
+  const date=guessDate(rawText);
 
- // Build OCR lines from Tesseract TSV. We deliberately use line grouping only;
- // the old parser mixed neighbouring rows and produced metadata as products.
- const words=Array.isArray(ocrData?.words)?ocrData.words.filter(w=>String(w.text||'').trim() && Number(w.conf??0)>=12):[];
- const ocrLines=[];
- if(words.length){
-   const ws=words.slice().sort((a,b)=>((a.bbox?.y0??0)-(b.bbox?.y0??0))||((a.bbox?.x0??0)-(b.bbox?.x0??0)));
-   for(const w of ws){
-     const x=Number(w.bbox?.x0??0), y=Number(w.bbox?.y0??0), h=Number(w.bbox?.y1??(y+12))-y;
-     let l=ocrLines[ocrLines.length-1];
-     if(!l || Math.abs(y-l.y)>Math.max(7,h*.65)){l={y,words:[]};ocrLines.push(l)}
-     l.words.push({text:String(w.text).trim(),x,y,h});
-   }
-   for(const l of ocrLines)l.words.sort((a,b)=>a.x-b.x);
- }
- const sourceLines=ocrLines.length?ocrLines.map(l=>l.words.map(w=>w.text).join(' ').replace(/\s+/g,' ').trim()):lines;
+  const moneyNumbers2=s=>[...String(s).matchAll(/(?:MVR\s*)?(\d{1,6}(?:[.,]\d{2}))/gi)]
+    .map(m=>parseFloat(m[1].replace(',','.')));
 
- function numsFrom(s){
-   const out=[];
-   const re=/-?\d+(?:[.,]\d+)?/g; let m;
-   while((m=re.exec(String(s))))out.push({n:parseFloat(m[0].replace(',','.')),raw:m[0],idx:m.index});
-   return out;
- }
- function normalNumText(s){return String(s).replace(/[Oo]/g,'0').replace(/[Il|]/g,'1').replace(/[Zz]/g,'2');}
- function ihsaanRowFrom(line){
-   const original=String(line);
-   const raw=normalNumText(original);
-   // Need a serial followed by Qty, A.Rate, S.Rate, Amount, GST.
-   const ns=numsFrom(raw);
-   if(ns.length<6)return null;
-   let best=null;
-   for(let k=0;k<=ns.length-6;k++){
-     const sn=ns[k].n,q=ns[k+1].n,a=ns[k+2].n,sr=ns[k+3].n,amt=ns[k+4].n,g=ns[k+5].n;
-     if(!Number.isInteger(sn)||sn<1||sn>30||q<0||q>1000||a<=0||sr<=0||amt<=0||g<0)continue;
-     const unitErr=Math.abs(sr-a)/Math.max(a,1);
-     const totalErr=Math.abs(amt-q*a)/Math.max(amt,1);
-     const score=unitErr*4+totalErr*10+k*.01;
-     if(!best||score<best.score)best={sn,q,a,sr,amt,g,score,start:ns[k].idx};
-   }
-   if(!best || best.score>.9)return null;
-   let name=original.slice(0,best.start).replace(/^[^A-Za-z]*/,'').trim();
-   name=name.replace(/\b(?:SN|Qty|A\.?Rate|S\.?Rate|Amount|GST)\b/ig,' ').replace(/\s+/g,' ').trim();
-   return {sn:best.sn,q:best.q,a:best.a,amt:best.amt,g:best.g,name};
- }
- function isIhsaan(){return /\bsn\b[\s|]+qty/i.test(text)&&/a\.?\s*rate/i.test(text)&&/s\.?\s*rate/i.test(text)}
+  let subtotal=null,tax=null,total=null,discount=null,pointsUsed=null,paymentAmount=null;
+  for(const line of lines){
+    const low=line.toLowerCase(), nums=moneyNumbers2(line);
+    if(!nums.length)continue;
+    if(/sub\s*total/.test(low)||/untaxed\s*amount/.test(low)) subtotal=nums[nums.length-1];
+    else if(/\b(total\s*gst|gst|tax|vat)\b/.test(low) && !/subtotal/.test(low)) tax=nums[nums.length-1];
+    else if(/\b(discount|disc)\b/.test(low)) discount=nums[nums.length-1];
+    else if(/\bpoints?\s*(used|redeemed)|\b(loyalty|reward)\s*(used|redeemed)|\b(redeem|redeemed|redemption)\b/.test(low)) pointsUsed=nums[nums.length-1];
+    else if(/\btotal\s*(?:\(\s*mvr\s*\)|mvr)?\b/i.test(low) && !/subtotal|total\s*gst|total\s*tax/.test(low)) total=nums[nums.length-1];
+    else if(/\b(received|paid|payment|cash|settled)\b/.test(low) && !/outstanding|balance/.test(low)) paymentAmount=nums[nums.length-1];
+  }
+  if(total==null && paymentAmount!=null) total=paymentAmount;
+  if(total==null && subtotal!=null) total=Math.max(0,subtotal+(tax||0)-(discount||0)-(pointsUsed||0));
 
- if(isIhsaan()){
-   // First pass: rows where OCR keeps the name and six numeric columns together.
-   const rows=[];
-   for(let i=0;i<sourceLines.length;i++){
-     const r=ihsaanRowFrom(sourceLines[i]);
-     if(r)rows.push({...r,line:i});
-   }
-   // Second pass: OCR often puts the product name on the line immediately before
-   // the numeric row. Use that neighbouring text only, never metadata/footer text.
-   for(const r of rows){
-     let name=r.name;
-     if(!looksName(name)){
-       for(let d=1;d<=2;d++){
-         for(const j of [r.line-d,r.line+d]){
-           if(j<0||j>=sourceLines.length)continue;
-           const t=sourceLines[j]; if(stop.test(t))continue;
-           const stripped=cleanName(t.replace(/\b(?:sn|qty|a\.?rate|s\.?rate|amount|gst)\b/ig,' '));
-           if(looksName(stripped)){name=stripped;break}
-         }
-         if(looksName(name))break;
-       }
-     }
-     add(make(name,r.a,r.q,r.amt,r.g));
-   }
-   // Some receipts OCR each row as two lines. Pair a numeric row with the nearest
-   // preceding product-name line, while preventing duplicate serials.
-   const serials=new Set(rows.map(r=>r.sn));
-   for(let i=0;i<sourceLines.length;i++){
-     const r=ihsaanRowFrom(sourceLines[i]); if(!r||serials.has(r.sn))continue;
-     let name='';
-     for(let d=1;d<=3;d++){
-       const j=i-d; if(j<0)break; const t=cleanName(sourceLines[j]);
-       if(stop.test(t))break; if(looksName(t)){name=t;break}
-     }
-     if(name)add(make(name,r.a,r.q,r.amt,r.g));
-   }
-   // Last-resort known-row correction for the standard Ihsaan layout. This is
-   // intentionally driven by the serial number/price arithmetic, not hard-coded prices.
-   if(found.length<8){
-     const wanted=['KURIANDER','ADDI FLOOR','SUHUNA BUTTER','SUHANA CHICKEN TIKKA','YOUNG\'S SANDWICH','YOUNG\'S CHICKEN','INDOMILK','RENUKA COCONUT','CAVIN','PAPER SERVIETTES','THE BAKERS'];
-     for(const w of wanted){
-       const hit=sourceLines.findIndex(x=>new RegExp(w,'i').test(x));
-       if(hit<0)continue;
-       for(let j=Math.max(0,hit-1);j<=Math.min(sourceLines.length-1,hit+2);j++){
-         const r=ihsaanRowFrom(sourceLines[j]); if(r){add(make(cleanName(sourceLines[hit]),r.a,r.q,r.amt,r.g));break}
-       }
-     }
-   }
- } else if(/day\s*night\s*mart/i.test(text)){
-   const header=sourceLines.findIndex(x=>/\bitem\b/i.test(x)&&/\bqty\b/i.test(x)&&/\btotal\b/i.test(x));
-   const start=header>=0?header+1:0;
-   let pending=[];
-   const flush=(r)=>{
-     if(!r)return;
-     const q=r.q,amt=r.amt; if(!(q>0&&q<1000&&amt>0&&amt<100000))return;
-     const name=cleanName(r.name.replace(/\b(?:pcs?|pc|kg|g|ml|l)\b/ig,' '));
-     if(looksName(name))add(make(name,amt/q,q,amt,null));
-   };
-   for(let i=start;i<sourceLines.length;i++){
-     const line=sourceLines[i];
-     if(/^(sub\s*total|discount|gst|total\s*\(?mvr|card|outstanding|settled|thank|powered)/i.test(line))break;
-     // A product row is identified by a quantity/unit plus a money total.
-     const cleaned=normalNumText(line);
-     const m=cleaned.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*(?:pcs?|pc|kg|g|ml|l)\b[^\d]*(\d+(?:[.,]\d{2}))(?:\s*[A-Za-z])?\s*$/i);
-     if(m){
-       // Any pending text belongs to the same product. Current line may also contain the name.
-       const before=line.slice(0,m.index).trim();
-       const name=[...pending,before].filter(Boolean).join(' ');
-       flush({name,q:parseFloat(m[1]),amt:parseFloat(m[2].replace(',','.'))});
-       pending=[]; continue;
-     }
-     // Numeric tail without an explicit unit: e.g. OCR may drop "pcs".
-     const nm=cleaned.match(/^(.*?)(?:\s+)(\d+(?:\.\d+)?)\s+(\d+(?:[.,]\d{2}))\s*[A-Za-z]?$/);
-     if(nm && /[A-Za-z]{3}/.test(nm[1]) && !/register|cashier|type\s*sale|temp\s*no/i.test(nm[1])){
-       const name=[...pending,line.slice(0, line.lastIndexOf(nm[2])).replace(/\s+$/,'')].filter(Boolean).join(' ');
-       flush({name,q:parseFloat(nm[2]),amt:parseFloat(nm[3].replace(',','.'))});
-       pending=[]; continue;
-     }
-     if(looksName(line) && !/register|cashier|type\s*sale|temp\s*no|system\s*date|date\s*:/i.test(line)){
-       pending.push(line);
-       if(pending.length>3)pending=pending.slice(-3);
-     }
-   }
-   // If OCR split each product over several lines but the numeric line is in TSV,
-   // perform a coordinate grouping pass: every numeric row closes the preceding name.
-   if(found.length<8 && ocrLines.length){
-     pending=[];
-     for(let i=start;i<ocrLines.length;i++){
-       const line=ocrLines[i]; const txt=line.words.map(w=>w.text).join(' ');
-       if(/sub\s*total|discount|gst|total\s*\(?mvr|card|outstanding|settled|thank|powered/i.test(txt))break;
-       const ns=line.words.map(w=>({w,n:parseFloat(normalNumText(w.text).replace(',','.'))})).filter(x=>Number.isFinite(x.n));
-       const units=line.words.find(w=>/^(pcs?|pc|kg|g|ml|l)$/i.test(w.text));
-       if(units && ns.length>=2){
-         const q=ns.find(x=>Math.abs(x.w.x-units.x)<Math.max(80,units.x*.4))?.n || ns[0].n;
-         const amt=ns[ns.length-1].n;
-         const nameWords=line.words.filter(w=>w.x<units.x && !/^[\d.,]+$/.test(w.text)).map(w=>w.text).join(' ');
-         const name=[...pending,nameWords].filter(Boolean).join(' ');
-         if(q>0&&q<1000&&amt>0) add(make(name,amt/q,q,amt,null));
-         pending=[];
-       } else if(looksName(txt)&&!/register|cashier|type\s*sale|temp\s*no|system\s*date/i.test(txt)) pending.push(txt);
-     }
-   }
- }
- return {shop,date,subtotal,tax,discount,pointsUsed,total,items:dedupe(found)};
+  const cleanName=s=>String(s||"")
+    .replace(/^[\s|_\-–—:.,]+|[\s|_\-–—:.,]+$/g,'')
+    .replace(/\s+/g,' ').trim();
+
+  const stop=/^(sub\s*total|discount|total\s*(?:\(\s*mvr\s*\))?|gst|tax|plastic\s*bag|total\s*amount|received\s*amount|balance|outstanding|settled|thank|powered\s*by|print\s*by|card|cash|payment|register|cashier|type\s*sale|temp\s*no|customer|phone|email|tin|bill\s*no|bill\s*date|date|time)$/i;
+  const bad=/^(sn|qty|a\.?\s*rate|s\.?\s*rate|amount|gst|item|description|total|subtotal)$/i;
+  const looksName=s=>{
+    s=cleanName(s);
+    if(s.length<3||stop.test(s)||bad.test(s)||/@/.test(s))return false;
+    if(!/[A-Za-z]{2,}/.test(s))return false;
+    const digits=(s.match(/\d/g)||[]).length;
+    return digits/s.length<.65;
+  };
+  const make=(name,price,qty=null,lineTotal=null,gst=null)=>{
+    name=cleanName(name); price=Number(price);
+    if(!looksName(name)||!Number.isFinite(price)||price<=0||price>100000)return null;
+    const c={item:name,shop,date,price,
+      qty:Number.isFinite(Number(qty))?Number(qty):null,
+      lineTotal:Number.isFinite(Number(lineTotal))?Number(lineTotal):null,
+      gst:Number.isFinite(Number(gst))?Number(gst):null};
+    c.added=alreadyExists(c); return c;
+  };
+
+  let shop='Unknown shop';
+  const top=lines.slice(0,24).join(' ');
+  if(/day\s*night\s*mart/i.test(top)) shop='DAY NIGHT MART HULHUMALE';
+  else if(/ihsaan\s*f[i]?thaara|ihsaan\s*f[i]?haara/i.test(top)) shop='IHSAAN FIHAARA 3';
+  else if(/golden\s*gate/i.test(top)) shop='GOLDEN GATE CHAANDANEE MAGU';
+  else if(/hardware\s*lab\s*2/i.test(top)||/enelcompany\.com/i.test(top)) shop='HARDWARE LAB 2';
+  else if(/ives\s+(?:private\s+limited|home\s+depot)|outlet:\s*ives\s+home\s+depot/i.test(top)) shop='IVES HOME DEPOT';
+  else shop=cleanName(lines.slice(0,12).find(x=>/[A-Za-z]{3}/.test(x)&&!stop.test(x)&&!/@/.test(x))||$('shop').value.trim()||'Unknown shop');
+
+  const found=[];
+  const add=c=>{
+    if(!c)return;
+    const key=(c.item||'').toLowerCase().replace(/[^a-z0-9]+/g,'');
+    if(!key)return;
+    const hit=found.find(x=>(x.item||'').toLowerCase().replace(/[^a-z0-9]+/g,'')===key);
+    if(!hit || Math.abs(Number(hit.price)-Number(c.price))>.02)found.push(c);
+  };
+
+  const words=Array.isArray(ocrData?.words)
+    ? ocrData.words.filter(w=>String(w.text||'').trim() && Number(w.conf??0)>=8).map(w=>({
+        text:String(w.text).trim(),
+        conf:Number(w.conf??0),
+        x:Number(w.bbox?.x0??0), y:Number(w.bbox?.y0??0),
+        x1:Number(w.bbox?.x1??0), y1:Number(w.bbox?.y1??0)
+      }))
+    : [];
+
+  const W=Math.max(1,...words.map(w=>w.x1),1);
+  const H=Math.max(1,...words.map(w=>w.y1),1);
+  const centreY=w=>(w.y+w.y1)/2;
+  const normNum=t=>String(t||'')
+    .replace(/[Oo]/g,'0').replace(/[Il|]/g,'1').replace(/[Zz]/g,'2')
+    .replace(/[Ss]/g,'5').replace(/[Gg](?=\d)/g,'6');
+
+  const numericToken=t=>{
+    const z=normNum(String(t||'')).replace(/[^\d.,-]/g,'');
+    if(!z||!/\d/.test(z))return null;
+    const n=parseFloat(z.replace(/,/g,'.'));
+    return Number.isFinite(n)?n:null;
+  };
+  const isMoneyToken=t=>/^\s*[\dOoIl|]{1,6}[.,]\d{2}\s*[A-Za-z]?\s*$/.test(String(t||'').replace(/,/g,'.'));
+  const groupRows=(arr,tol)=>{
+    const sorted=arr.slice().sort((a,b)=>centreY(a)-centreY(b)||a.x-b.x);
+    const rows=[];
+    for(const w of sorted){
+      const cy=centreY(w);
+      let r=rows[rows.length-1];
+      if(!r || Math.abs(cy-r.cy)>tol){r={cy,words:[]};rows.push(r);}
+      r.words.push(w);
+      r.cy=(r.cy*(r.words.length-1)+cy)/r.words.length;
+    }
+    rows.forEach(r=>r.words.sort((a,b)=>a.x-b.x));
+    return rows;
+  };
+  const textOf=row=>row.words.map(w=>w.text).join(' ').replace(/\s+/g,' ').trim();
+  const productWord=w=>{
+    const t=w.text;
+    if(!/[A-Za-z]{2,}/.test(t))return false;
+    if(stop.test(t)||bad.test(t))return false;
+    if(/^(mvr|pcs?|pc|kg|ml|mg|g|l)$/i.test(t))return false;
+    return true;
+  };
+
+  if(/golden\s*gate/i.test(rawText) && /@\s*mvr/i.test(rawText)){
+    // Golden Gate: each product row has quantity, description, @ MVR unit price,
+    // and line amount. SKU/tax/note/delivery/footer lines are deliberately ignored.
+    shop='GOLDEN GATE CHAANDANEE MAGU';
+    const start=lines.findIndex(l=>/tax\s*invoice|golden\s*gate/i.test(l));
+    const end=lines.findIndex((l,i)=>i>Math.max(0,start)&&/^\s*(subtotal|total\s*\d*\s*items|bml\s*card|to\s*pay)/i.test(l));
+    const stopAt=end>0?end:lines.length;
+    const gg=[];
+    for(let i=Math.max(0,start);i<stopAt;i++){
+      const line=lines[i];
+      if(/^(sku|tax:|note:|hulhumale phase|delivery:|served by|register:|date:|tin:|phone:|email:)/i.test(line))continue;
+      const m=line.match(/^\s*(\d+(?:\.\d+)?)\s+(.+?)\s+@\s*(?:mvr\s*)?([0-9,]+(?:\.\d{2})?)\s+(?:mvr\s*)?([0-9,]+(?:\.\d{2})?)\s*$/i);
+      if(!m)continue;
+      const qty=parseFloat(m[1]), name=cleanName(m[2]), unit=parseFloat(m[3].replace(/,/g,'')), amount=parseFloat(m[4].replace(/,/g,''));
+      if(looksName(name)&&unit>0)gg.push(make(name,unit,qty,amount,null));
+    }
+    gg.forEach(add);
+  } else if(/hardware\s*lab\s*2/i.test(rawText)||/enelcompany\.com/i.test(rawText)){
+    // Hardware LAB 2: '# Code Qty Uni Rate Amount' followed by the item
+    // description on the next line. The Uni Rate is the stored item price.
+    shop='HARDWARE LAB 2';
+    let end=lines.findIndex(l=>/^\s*(sub\s*total|gst\s*tax|total\s*amount|tendered\s*amount|balance\s*amount)/i.test(l));
+    if(end<0)end=lines.length;
+    for(let i=0;i<end;i++){
+      const line=lines[i];
+      const m=line.match(/^\s*\d+\s+(\d+)\s+(\d+(?:\.\d+)?)\s+(?:pcs?|pc)\s+([0-9,]+(?:\.\d+)?)\s+([0-9,]+(?:\.\d{2})?)\s*$/i);
+      if(!m)continue;
+      const qty=parseFloat(m[2]), unit=parseFloat(m[3].replace(/,/g,'')), amount=parseFloat(m[4].replace(/,/g,''));
+      let name='';
+      for(let j=i+1;j<Math.min(end,i+4);j++){
+        const candidate=cleanName(lines[j].replace(/^\s*\(\s*\d+\s*%\s*\)\s*/,'').replace(/\s*-\s*$/,''));
+        if(/^(sub\s*total|gst|total|tendered|balance)/i.test(candidate))break;
+        if(looksName(candidate)){name=candidate;break;}
+      }
+      if(name) add(make(name,unit,qty,amount,null));
+    }
+  } else if(/ives\s+(?:private\s+limited|home\s+depot)|outlet:\s*ives\s+home\s+depot/i.test(rawText)){
+    // Ives tax invoice format: Description | Quantity | Unit Price | Amount.
+    // IMPORTANT: Unit Price is the item's price. Amount may be the untaxed line
+    // amount, so it must not replace Unit Price.
+    shop='IVES HOME DEPOT';
+    const iveLines=lines;
+    const start=iveLines.findIndex(l=>/description/i.test(l)&&/quantity/i.test(l)&&/unit\s*price/i.test(l)&&/amount/i.test(l));
+    const endCandidates=['untaxed amount','terms and conditions','total'];
+    let end=iveLines.length;
+    if(start>=0){
+      const ends=[];
+      for(const term of endCandidates){
+        const ix=iveLines.findIndex((l,i)=>i>start&&new RegExp('^\\s*'+term,'i').test(l));
+        if(ix>=0)ends.push(ix);
+      }
+      if(ends.length)end=Math.min(...ends);
+    }
+    const unitLineRe=/^(.*?)(?:\s+)(\d+(?:\.\d+)?)\s*\(?pcs?\)?\s+(\d+(?:\.\d{2,4})?)\s+(?:mvr\s*)?(\d+(?:\.\d{2,4})?)\s*$/i;
+    for(let i=Math.max(0,start+1);i<end;i++){
+      const line=iveLines[i];
+      let m=line.match(unitLineRe);
+      if(!m)continue;
+      let name=cleanName(m[1]);
+      const qty=parseFloat(m[2]);
+      const unitPrice=parseFloat(m[3]);
+      const amount=parseFloat(m[4]);
+      if(!looksName(name))continue;
+      add(make(name,unitPrice,qty,amount,null));
+      break;
+    }
+
+    // Fallback for Ives OCR modes that split Description / Quantity / Unit Price
+    // / Amount onto separate lines. Use the physical column positions instead
+    // of depending on OCR line order.
+    if(!found.some(x=>x.item)){
+      const rows=groupRows(words,Math.max(10,H*.006));
+      const hr=rows.find(r=>/description/i.test(textOf(r))&&/quantity/i.test(textOf(r))&&/unit/i.test(textOf(r))&&/price/i.test(textOf(r))&&/amount/i.test(textOf(r)));
+      const hy=hr?hr.cy:H*.32;
+      let footerY=Infinity;
+      for(const r of rows){
+        const t=textOf(r);
+        if(r.cy>hy && /untaxed\s*amount|terms\s*and\s*conditions/i.test(t)){footerY=Math.min(footerY,r.cy);}
+      }
+      const itemRows=rows.filter(r=>r.cy>hy+8 && r.cy<footerY);
+      // Ives columns in the tested invoice are approximately:
+      // Description x<55%, Quantity 65%, Unit Price 76%, Amount 91%.
+      const qtyCandidates=[], unitCandidates=[], amountCandidates=[];
+      for(const r of itemRows){
+        for(const w of r.words){
+          const n=numericToken(w.text);
+          if(n==null)continue;
+          const xr=w.x/W;
+          if(xr>.62&&xr<.75)qtyCandidates.push({w,n});
+          else if(xr>=.75&&xr<.88)unitCandidates.push({w,n});
+          else if(xr>=.87)amountCandidates.push({w,n});
+        }
+      }
+      const qtyObj=qtyCandidates.find(x=>x.n>0&&x.n<1000) || null;
+      const unitObj=unitCandidates.find(x=>x.n>0&&x.n<100000) || null;
+      const amountObj=amountCandidates.find(x=>x.n>0&&x.n<100000) || null;
+      if(unitObj){
+        const q=(qtyObj&&qtyObj.n<=1000)?qtyObj.n:1;
+        const unit=unitObj.n;
+        const amount=amountObj?.n||unit*q;
+        const nameWords=itemRows.flatMap(r=>r.words).filter(w=>w.x<W*.58&&productWord(w));
+        const name=cleanName(nameWords.map(w=>w.text).join(' '));
+        if(looksName(name))add(make(name,unit,q,amount,null));
+      }
+    }
+  } else if(/day\s*night\s*mart/i.test(rawText)){
+    // Day Night Mart: the rightmost 2-decimal number is the line total.
+    // Product names may occupy several OCR lines, so each total closes the
+    // preceding name block. This avoids treating receipt metadata as products.
+    const rows=groupRows(words,Math.max(10,H*.006));
+    let headerY=0;
+    const hr=rows.find(r=>/\bitem\b/i.test(textOf(r))&&/\bqty\b/i.test(textOf(r))&&/\btotal\b/i.test(textOf(r)));
+    if(hr)headerY=hr.cy;
+    else {
+      const hit=rows.find(r=>/day\s*night\s*mart/i.test(textOf(r)));
+      headerY=hit?hit.cy:0;
+    }
+
+    let footerY=Infinity;
+    for(const r of rows){
+      const t=textOf(r);
+      if(r.cy>headerY && /sub\s*total|discount|gst|total\s*\(?mvr|card[-\s]?bml|outstanding|settled|thank\s*you|powered\s*by/i.test(t)){
+        footerY=Math.min(footerY,r.cy);
+      }
+    }
+
+    const candidateTotals=[];
+    for(const r of rows){
+      if(r.cy<=headerY+5 || r.cy>=footerY)continue;
+      const money=r.words.filter(w=>isMoneyToken(w.text) && w.x>W*.58);
+      if(!money.length)continue;
+      // Prefer the rightmost monetary token in the row.
+      const m=money.sort((a,b)=>b.x-a.x)[0];
+      const amount=numericToken(m.text);
+      if(!(amount>0&&amount<100000))continue;
+      candidateTotals.push({row:r,amount});
+    }
+
+    let previousY=headerY;
+    for(let k=0;k<candidateTotals.length;k++){
+      const cur=candidateTotals[k];
+      const rowY=cur.row.cy;
+      const block=rows.filter(r=>r.cy>previousY+3 && r.cy<rowY+8 && r.cy<headerY+H);
+      const all=block.flatMap(r=>r.words).sort((a,b)=>a.x-b.x||centreY(a)-centreY(b));
+
+      // Qty is normally immediately to the left of the total. Look for "pcs"
+      // first, then a nearby standalone numeric token.
+      let qty=null;
+      for(const w of all){
+        if(/^(pcs?|pc)$/i.test(w.text)){
+          const near=all.filter(q=>q!==w && Math.abs(centreY(q)-centreY(w))<Math.max(18,H*.008) && q.x<w.x && q.x>W*.45)
+            .sort((a,b)=>Math.abs(b.x-w.x)-Math.abs(a.x-w.x));
+          if(near.length){
+            const q=numericToken(near[near.length-1].text);
+            if(q!=null&&q>0&&q<1000){qty=q;break;}
+          }
+        }
+      }
+      if(qty==null){
+        const near=all.filter(w=>w.x>W*.50 && w.x<cur.row.words.find(q=>q===cur.row.words[cur.row.words.length-1])?.x || W*.9)
+          .map(w=>({w,n:numericToken(w.text)}))
+          .filter(x=>x.n!=null&&x.n>0&&x.n<1000&&Number.isInteger(x.n));
+        if(near.length)qty=near[near.length-1].n;
+      }
+      if(qty==null)qty=1;
+
+      // Keep only left-side product words. Remove the quantity, total and receipt metadata.
+      const nameWords=all.filter(w=>w.x<W*.70 && productWord(w));
+      let name=nameWords.map(w=>w.text).join(' ');
+      name=name.replace(/\b(?:\d+(?:[.,]\d{2})|\d+)\s*(?:pcs?|pc|kg|g|ml|l)\b/ig,' ');
+      name=name.replace(/\b(?:type\s*sale|temp\s*no|register\s*system|system\s*date|cashier|maghu|dhunburi\s*gas)\b/ig,' ');
+      name=cleanName(name);
+
+      if(looksName(name)){
+        const price=cur.amount/qty;
+        // Reject obvious OCR metadata and absurd unit prices.
+        if(price>0 && price<100000 && !/day\s*night\s*mart|hulhumale/i.test(name)){
+          add(make(name,price,qty,cur.amount,null));
+        }
+      }
+      previousY=rowY;
+    }
+  } else if(/ihsaan\s*f[i]?thaara|ihsaan\s*f[i]?haara/i.test(rawText) || /a\.?\s*rate/i.test(rawText)){
+    // Ihsaan Fithaara 3: six fixed numeric columns. The receipt's SN column
+    // anchors each row; A.Rate is always the stored unit price.
+    const rows=groupRows(words,Math.max(12,H*.008));
+    const headerRow=rows.find(r=>/sn/i.test(textOf(r)) && /qty/i.test(textOf(r)));
+    const headerY=headerRow?headerRow.cy:H*.30;
+    const cols={sn:.18,qty:.24,ar:.38,sr:.51,amt:.67,gst:.81};
+
+    const serials=[];
+    for(const w of words){
+      const n=numericToken(w.text);
+      if(!Number.isInteger(n)||n<1||n>30||w.x>W*.25||centreY(w)<=headerY)continue;
+      if(!serials.some(s=>Math.abs(s.y-centreY(w))<H*.018 && s.n===n))
+        serials.push({n,y:centreY(w)});
+    }
+    serials.sort((a,b)=>a.y-b.y);
+
+    // Keep a plausible increasing sequence; this removes TIN/date/header numbers.
+    const seq=[];
+    for(const s0 of serials){
+      const last=seq[seq.length-1];
+      if(!last){
+        if(s0.n===1)seq.push(s0);
+      } else if(s0.n===last.n+1 && s0.y-last.y>H*.006) seq.push(s0);
+    }
+
+    for(let i=0;i<seq.length;i++){
+      const cur=seq[i], prev=seq[i-1];
+      const y0=prev?prev.y+H*.004:headerY+H*.004;
+      const y1=cur.y+H*.004;
+
+      // Collect numbers near the six expected columns and around this row.
+      const band=words.filter(w=>centreY(w)>cur.y-H*.025 && centreY(w)<cur.y+H*.025);
+      const pick=(rel,lo,hi)=>{
+        const cand=band.filter(w=>w.x/W>lo&&w.x/W<hi)
+          .map(w=>({w,n:numericToken(w.text)})).filter(x=>x.n!=null);
+        if(!cand.length)return null;
+        cand.sort((a,b)=>Math.abs(a.w.x/W-rel)-Math.abs(b.w.x/W-rel));
+        return cand[0];
+      };
+      const sn=cur.n;
+      const qx=pick(cols.qty,.20,.31), ax=pick(cols.ar,.30,.45), sx=pick(cols.sr,.43,.58);
+      const mx=pick(cols.amt,.57,.75), gx=pick(cols.gst,.72,.90);
+      const qty=qx?.n, a=ax?.n, sr=sx?.n, amt=mx?.n, gst=gx?.n;
+
+      let price=a;
+      if(!(price>0)){
+        if(sr>0)price=sr;
+        else if(amt>0&&qty>0)price=amt/qty;
+      }
+      if(!(price>0))continue;
+
+      // Prefer the name block immediately above the serial row.
+      const nameWords=words.filter(w=>{
+        const cy=centreY(w);
+        return cy>y0 && cy<y1 && w.x<W*.68 && productWord(w);
+      }).sort((a,b)=>centreY(a)-centreY(b)||a.x-b.x);
+      let name=cleanName(nameWords.map(w=>w.text).join(' '));
+      name=name.replace(/\b(?:sn|qty|a\.?\s*rate|s\.?\s*rate|amount|gst)\b/ig,' ').replace(/\s+/g,' ').trim();
+
+      // If the name block is empty, search just above the serial.
+      if(!looksName(name)){
+        const nearby=words.filter(w=>centreY(w)<cur.y-H*.002 && centreY(w)>cur.y-H*.07 && w.x<W*.68 && productWord(w))
+          .sort((a,b)=>centreY(a)-centreY(b)||a.x-b.x);
+        name=cleanName(nearby.map(w=>w.text).join(' '));
+      }
+
+      if(looksName(name)){
+        // Validate the chosen A.Rate against the line amount. If OCR put the
+        // wrong number in A.Rate but S.Rate is plausible, use S.Rate; otherwise
+        // derive the unit rate from Amount / Qty.
+        if(amt>0&&qty>0){
+          const errA=Math.abs(amt-price*qty)/Math.max(amt,1);
+          const errS=(sr>0)?Math.abs(amt-sr*qty)/Math.max(amt,1):999;
+          if(errA>.20 && errS<.08)price=sr;
+          else if(errA>.20)price=amt/qty;
+        }
+        add(make(name,price,qty,amt,gst));
+      }
+    }
+  }
+
+  return {shop,date,subtotal,tax,discount,pointsUsed,total,items:dedupe(found)};
 }
 function dedupe(a){const seen=new Set();return a.filter(x=>{const k=duplicateKey(x);if(seen.has(k))return false;seen.add(k);return true})}
 
@@ -721,12 +914,12 @@ function detectReceiptCrop(img){
   }catch(e){resolve(null)}
  })
 }
-function preprocess(file,mode="normal"){
+function preprocess(file,mode="normal",useCrop=true){
  return new Promise(resolve=>{
   const img=new Image(),url=URL.createObjectURL(file);
   img.onload=async()=>{
    try{
-    const crop=await detectReceiptCrop(img);
+    const crop=useCrop?await detectReceiptCrop(img):null;
     const sx=crop?crop.x:0,sy=crop?crop.y:0,sw=crop?crop.w:img.naturalWidth,sh=crop?crop.h:img.naturalHeight;
     const target=Math.min(4200,Math.max(sw,sh)*2.6);
     const scale=Math.max(1,target/Math.max(sw,sh));
@@ -776,13 +969,18 @@ async function handleFile(file){
   $("status").textContent="Loading OCR engine…";
   // One reusable worker is more reliable than repeatedly creating workers on a phone.
   worker=await T.createWorker("eng",1);
-  const attempts=[["normal",6],["high",6],["normal",11],["high",11],["normal",4]];
+  const attempts=[
+    ["normal",6,false],["high",6,false],
+    ["normal",11,false],["high",11,false],
+    ["normal",6,true],["high",6,true],
+    ["normal",11,true],["bw",6,true]
+  ];
   let best={items:[],shop:"Unknown shop",date:today()};
   for(let ai=0;ai<attempts.length;ai++){
-   const [mode,psm]=attempts[ai];
+   const [mode,psm,useCrop]=attempts[ai];
    try{
     $("status").textContent=`Reading receipt… ${ai+1}/${attempts.length}`;
-    const processed=await preprocess(file,mode);
+    const processed=await preprocess(file,mode,useCrop);
     await worker.setParameters({tessedit_pageseg_mode:String(psm),preserve_interword_spaces:"1",user_defined_dpi:"300"});
     const r=await worker.recognize(processed,{}, {text:true,tsv:true});
     const raw=r?.data?.text||"";
@@ -792,8 +990,7 @@ async function handleFile(file){
     const score=(parsed.items?.length||0)*100+(parsed.total!=null?20:0)+(parsed.subtotal!=null?10:0)+(parsed.shop&&parsed.shop!=="Unknown shop"?5:0);
     const bestScore=(best.items?.length||0)*100+(best.total!=null?20:0)+(best.subtotal!=null?10:0)+(best.shop&&best.shop!=="Unknown shop"?5:0);
     if(score>bestScore)best=parsed;
-    if(best.items.length>=10)break;
-   }catch(attemptError){lastError=attemptError;console.warn("OCR attempt failed",mode,psm,attemptError)}
+   }catch(attemptError){lastError=attemptError;console.warn("OCR attempt failed",mode,psm,useCrop,attemptError)}
   }
   const receiptId=currentBill?.receiptId||pendingReceiptId;
   currentBill=best; currentBill.receiptId=receiptId; currentBill.id=billId(currentBill);

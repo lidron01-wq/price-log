@@ -199,16 +199,36 @@ function renderShops(){
  const shops={};entries.forEach(e=>{shops[e.shop]=(shops[e.shop]||0)+1});
  $("shops").innerHTML='<div class="shop-grid">'+Object.keys(shops).sort().map(s=>`<div class="shop-card"><div class="name">${esc(s)}</div><div class="stat">${shops[s]} entries logged</div></div>`).join("")+'</div>';
 }
-function renderSpending(){
- const m={};
- entries.forEach(e=>{
-   const k=String(e.date||"").slice(0,7); if(!k)return;
-   const price=Number(e.price); const amount=Number.isFinite(price)?price:0;
-   m[k]??={total:0,count:0}; m[k].total+=amount; m[k].count++;
+function billTotalsByMonth(){
+ const out={};
+ const coveredKeys=new Set();
+ const coveredShopDates=[];
+ const seenBills=new Set();
+ (savedReceipts||[]).forEach(r=>{
+  const k=String(r.date||"").slice(0,7); if(!k)return;
+  const total=Number(r.total); if(!Number.isFinite(total))return;
+  const keys=Array.isArray(r.entryKeys)?r.entryKeys.slice().sort():[];
+  const sig=keys.length?`keys:${keys.join("||")}`:`bill:${String(r.shop||"").trim().toLowerCase()}|${r.date||""}|${total.toFixed(2)}|${Number(r.items)||0}`;
+  if(seenBills.has(sig))return;
+  seenBills.add(sig);
+  out[k]??={total:0,count:0}; out[k].total+=total; out[k].count++;
+  if(keys.length)keys.forEach(x=>coveredKeys.add(x));
+  else if(r.shop&&r.date)coveredShopDates.push({shop:String(r.shop).trim().toLowerCase(),date:String(r.date)});
  });
+ entries.forEach(e=>{
+  const k=String(e.date||"").slice(0,7); if(!k)return;
+  const covered=coveredKeys.has(duplicateKey(e))||coveredShopDates.some(x=>x.shop===String(e.shop||"").trim().toLowerCase()&&x.date===String(e.date||""));
+  if(covered)return;
+  const price=Number(e.price); if(!Number.isFinite(price))return;
+  out[k]??={total:0,count:0}; out[k].total+=price; out[k].count++;
+ });
+ return out;
+}
+function renderSpending(){
+ const m=billTotalsByMonth();
  $("spending").innerHTML=Object.keys(m).sort().reverse().map(k=>{
    const [y,mo]=k.split("-");const label=new Date(+y,+mo-1,1).toLocaleDateString("en-US",{month:"long",year:"numeric"});
-   return `<div class="month-card"><div><b>${label}</b><span class="count">${m[k].count} entries</span></div><b>MVR ${m[k].total.toFixed(2)}</b></div>`
+   return `<div class="month-card"><div><b>${label}</b><span class="count">${m[k].count} bill/entry${m[k].count===1?"":"s"}</span></div><b>MVR ${m[k].total.toFixed(2)}</b></div>`
  }).join("")||'<div class="empty">No entries yet.</div>';
 }
 async function deleteLastBill(){
@@ -232,9 +252,8 @@ async function deleteLastBill(){
 }
 function renderDash(){
  const now=today().slice(0,7);
- const total=entries.filter(e=>String(e.date||"").slice(0,7)===now).reduce((a,e)=>{
-   const price=Number(e.price); return a+(Number.isFinite(price)?price:0);
- },0);
+ const monthTotals=billTotalsByMonth();
+ const total=Number(monthTotals[now]?.total||0);
  const items=new Set(entries.map(e=>String(e.item||"").trim().toLowerCase()).filter(Boolean)).size;
  const recent=entries.slice().sort((a,b)=>String(b.date||"").localeCompare(String(a.date||""))).slice(0,5);
  const bill=savedReceipts&&savedReceipts.length?savedReceipts[0]:null;

@@ -482,11 +482,23 @@ function parseReceipt(text){
 }
 function dedupe(a){const seen=new Set();return a.filter(x=>{const k=duplicateKey(x);if(seen.has(k))return false;seen.add(k);return true})}
 
+async function persistBillTotals(){
+ if(!currentBill?.receiptId)return;
+ const payload={...currentBill,items:entries.filter(e=>e.receiptId===currentBill.receiptId)};
+ await updateReceiptRecord(currentBill.receiptId,payload);
+ renderDash();renderSpending();renderReceipts();updateTabCounts();
+}
 function renderBillSummary(){
  const b=currentBill||{};
  const el=$("billSummary");if(!el)return;
- el.innerHTML=`<div class="billrow"><span>Subtotal (without tax)</span><input id="billSubtotal" type="number" step="0.01" value="${b.subtotal!=null?Number(b.subtotal).toFixed(2):""}" placeholder="0.00"></div><div class="billrow"><span>GST / Tax</span><input id="billTax" type="number" step="0.01" value="${b.tax!=null?Number(b.tax).toFixed(2):""}" placeholder="0.00"></div><div class="billrow total"><span>Total</span><input id="billTotal" type="number" step="0.01" value="${b.total!=null?Number(b.total).toFixed(2):""}" placeholder="0.00"></div>`;
- ["billSubtotal","billTax","billTotal"].forEach(id=>$(id)?.addEventListener("input",()=>{const v=parseFloat($(id).value);if(id==="billSubtotal")b.subtotal=Number.isFinite(v)?v:null;if(id==="billTax")b.tax=Number.isFinite(v)?v:null;if(id==="billTotal")b.total=Number.isFinite(v)?v:null;syncCurrentReceiptRecord()}));
+ el.innerHTML=`<div class="billrow"><span>Subtotal (without tax)</span><input id="billSubtotal" type="number" step="0.01" value="${b.subtotal!=null&&Number.isFinite(Number(b.subtotal))?Number(b.subtotal).toFixed(2):""}" placeholder="0.00"></div><div class="billrow"><span>GST / Tax</span><input id="billTax" type="number" step="0.01" value="${b.tax!=null&&Number.isFinite(Number(b.tax))?Number(b.tax).toFixed(2):""}" placeholder="0.00"></div><div class="billrow total"><span>Total</span><input id="billTotal" type="number" step="0.01" value="${b.total!=null&&Number.isFinite(Number(b.total))?Number(b.total).toFixed(2):""}" placeholder="0.00"></div>`;
+ ["billSubtotal","billTax","billTotal"].forEach(id=>$(id)?.addEventListener("change",async()=>{
+   const v=parseFloat($(id).value);
+   if(id==="billSubtotal")b.subtotal=Number.isFinite(v)?v:null;
+   if(id==="billTax")b.tax=Number.isFinite(v)?v:null;
+   if(id==="billTotal")b.total=Number.isFinite(v)?v:null;
+   await persistBillTotals();
+ }));
 }
 function renderScan(){
  const c=$("candidates");if(!scanEntries.length){c.innerHTML="";return}

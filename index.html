@@ -24,7 +24,7 @@ input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px
 .tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;position:sticky;bottom:8px;z-index:20;padding:7px;background:color-mix(in srgb,var(--card) 94%,transparent);border:1px solid var(--line);border-radius:16px;margin:24px 0 14px;box-shadow:0 8px 24px rgba(0,0,0,.14);backdrop-filter:blur(12px)}.tab{position:relative;background:transparent;color:var(--dim);border:0;border-radius:11px;padding:10px 2px;min-height:46px;white-space:nowrap;font-size:10px;font-weight:650;line-height:1.1}.tab.active{background:var(--teal);color:var(--paper);box-shadow:0 3px 10px rgba(0,0,0,.12)}.tab .count{position:absolute;top:3px;right:3px;display:inline-flex;min-width:16px;height:16px;padding:0 3px;align-items:center;justify-content:center;margin:0;border-radius:99px;font-size:9px;font-weight:700;background:color-mix(in srgb,var(--dim) 18%,transparent);color:inherit}.tab.active .count{background:rgba(255,255,255,.2)}@media(max-width:430px){.tabs{gap:3px;padding:6px}.tab{font-size:9.5px;padding:10px 1px;min-height:44px}.tab .count{top:2px;right:2px;min-width:15px;height:15px;padding:0 3px;font-size:8px}}
 .tab-content{min-height:20px}.tab-content section{width:100%}.empty{color:var(--dim);font-size:14px;padding:20px 4px}.category-head{font-size:13px;font-weight:700;color:var(--coral);margin:18px 2px 8px}.item-group{overflow:hidden;margin-bottom:12px}.item-head{padding:12px 14px;font-weight:700;border-bottom:1px solid var(--line)}.entry{display:flex;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);font-size:14px}.entry:last-child{border:0}.date{color:var(--dim);font-size:11px}.price{font-weight:700}.entry-actions{display:flex;gap:5px;align-items:center}.entry-actions button{padding:5px 8px;font-size:12px}
 .candidates{margin-top:12px}.cand{display:flex;align-items:center;gap:7px;padding:9px;margin-top:6px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}.cand.new{border-color:var(--good)}.cand-text{flex:1;overflow:hidden;text-overflow:ellipsis}.cand-price{font-weight:700;white-space:nowrap}.badge{font-size:10px;padding:3px 5px;border-radius:5px;background:var(--good);color:white}
-.billbox{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}.billrow{display:flex;justify-content:space-between;padding:4px 0}.billrow.total{font-weight:800;font-size:17px;border-top:1px solid var(--line);margin-top:5px;padding-top:9px}
+.billbox{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}.billrow{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:5px 0}.billrow.total{font-weight:800;font-size:17px;border-top:1px solid var(--line);margin-top:5px;padding-top:9px}.billrow input{max-width:180px;text-align:right;padding:8px}.bill-tools{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.bill-add-box{margin-top:10px;padding:12px;border:1px dashed var(--line);border-radius:10px;background:color-mix(in srgb,var(--paper) 70%,transparent)}.history-note{font-size:12px;color:var(--dim);margin:8px 0 12px}
 .stat-grid{display:flex;gap:10px;flex-wrap:wrap}.stat-card{flex:1;min-width:140px;padding:14px}.num{font-size:21px;font-weight:800;color:var(--teal)}.lbl{font-size:12px;color:var(--dim);margin-top:2px}.shop-grid{display:flex;flex-wrap:wrap;gap:10px}.shop-card{flex:1;min-width:160px;padding:13px}.shop-card .name{font-weight:700}.shop-card .stat{font-size:12px;color:var(--dim);margin-top:3px}.month-card{display:flex;justify-content:space-between;padding:14px;margin-bottom:9px}.month-card .count{display:block;font-size:12px;color:var(--dim);margin-top:3px}.recent{overflow:hidden}.recent div{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px}.recent div:last-child{border:0}
 
 .search-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}.search-title{font-weight:700;font-size:14px;margin-bottom:7px}.search-results{margin-top:10px}.search-result{padding:11px 0;border-top:1px solid var(--line)}.search-result:first-child{border-top:0}.search-item-title{font-weight:700;margin-bottom:5px}.shop-price{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:3px 0}.shop-price .cheap{color:var(--good);font-weight:800}.match-note{font-size:12px;color:var(--dim);margin-top:3px}.list-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px}.compare-shop{border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:8px;background:var(--paper)}.compare-shop.top{border-color:var(--good)}.compare-shop .shop-name{font-weight:800}.compare-items{margin-top:8px;font-size:12px;color:var(--dim)}
@@ -237,10 +237,12 @@ async function deleteLastBill(){
  const keys=Array.isArray(bill.entryKeys)?bill.entryKeys:[];
  const shop=String(bill.shop||"").trim().toLowerCase();
  const date=String(bill.date||"");
- const matching=keys.length?entries.filter(e=>keys.includes(duplicateKey(e))):entries.filter(e=>shop&&date&&String(e.shop||"").trim().toLowerCase()===shop&&String(e.date||"")===date);
+ const byReceipt=entries.filter(e=>e.receiptId===bill.id);
+ const matching=byReceipt.length?byReceipt:(keys.length?entries.filter(e=>keys.includes(duplicateKey(e))):entries.filter(e=>shop&&date&&String(e.shop||"").trim().toLowerCase()===shop&&String(e.date||"")===date));
  const removed=matching.length;
  if(!confirm(`Delete the last bill from ${bill.shop||"this shop"}?\n\nThis will remove the saved receipt and ${removed} matching price entr${removed===1?"y":"ies"}.`))return;
- if(keys.length){const keySet=new Set(keys);entries=entries.filter(e=>!keySet.has(duplicateKey(e)));}
+ if(byReceipt.length){entries=entries.filter(e=>e.receiptId!==bill.id);}
+ else if(keys.length){const keySet=new Set(keys);entries=entries.filter(e=>!keySet.has(duplicateKey(e)));}
  else if(shop&&date)entries=entries.filter(e=>!(String(e.shop||"").trim().toLowerCase()===shop&&String(e.date||"")===date));
  try{
    const db=await openReceiptDb();
@@ -480,24 +482,32 @@ function parseReceipt(text){
 }
 function dedupe(a){const seen=new Set();return a.filter(x=>{const k=duplicateKey(x);if(seen.has(k))return false;seen.add(k);return true})}
 
+function renderBillSummary(){
+ const b=currentBill||{};
+ const el=$("billSummary");if(!el)return;
+ el.innerHTML=`<div class="billrow"><span>Subtotal (without tax)</span><input id="billSubtotal" type="number" step="0.01" value="${b.subtotal!=null?Number(b.subtotal).toFixed(2):""}" placeholder="0.00"></div><div class="billrow"><span>GST / Tax</span><input id="billTax" type="number" step="0.01" value="${b.tax!=null?Number(b.tax).toFixed(2):""}" placeholder="0.00"></div><div class="billrow total"><span>Total</span><input id="billTotal" type="number" step="0.01" value="${b.total!=null?Number(b.total).toFixed(2):""}" placeholder="0.00"></div>`;
+ ["billSubtotal","billTax","billTotal"].forEach(id=>$(id)?.addEventListener("input",()=>{const v=parseFloat($(id).value);if(id==="billSubtotal")b.subtotal=Number.isFinite(v)?v:null;if(id==="billTax")b.tax=Number.isFinite(v)?v:null;if(id==="billTotal")b.total=Number.isFinite(v)?v:null;syncCurrentReceiptRecord()}));
+}
 function renderScan(){
  const c=$("candidates");if(!scanEntries.length){c.innerHTML="";return}
  const newCount=scanEntries.filter(x=>!x.added).length;
  c.innerHTML=`<div style="font-size:12px;color:var(--dim);margin-bottom:6px">Found ${scanEntries.length} priced item(s). ${newCount?newCount+" new/missing item(s)":"All detected items are already recorded."}</div>
- ${newCount?'<button class="primary" id="addMissing">Add missing items</button>':''}
- ${scanEntries.map((x,i)=>`<div class="cand ${x.added?'':'new'}"><span class="cand-text">${esc(x.item)}<br><small style="color:var(--dim)">${esc(x.shop)}</small></span>${x.added?'<span class="badge">Already added</span>':""}<span class="cand-price">MVR ${x.price.toFixed(2)}</span><button class="ghost small" onclick="editCandidate(${i})">${x.added?"View/Edit":"Edit"}</button>${x.added?"":`<button class="ghost small" onclick="addCandidate(${i})">Add</button>`}</div>`).join("")}`;
+ <div class="bill-tools">${newCount?'<button class="primary" id="addMissing">Add missing items</button>':''}<button class="ghost small" id="addOtherItem">Add another missing item</button></div>
+ <div id="otherItemBox"></div>
+ ${scanEntries.map((x,i)=>`<div class="cand ${x.added?'':'new'}"><span class="cand-text">${esc(x.item)}<br><small style="color:var(--dim)">${esc(x.shop)}</small></span>${x.added?'<span class="badge">Already added</span>':""}<span class="cand-price">MVR ${Number(x.price).toFixed(2)}</span><button class="ghost small" onclick="editCandidate(${i})">${x.added?"View/Edit":"Edit"}</button>${x.added?"":`<button class="ghost small" onclick="addCandidate(${i})">Add</button>`}</div>`).join("")}`;
  if($("addMissing"))$("addMissing").onclick=()=>scanEntries.forEach((x,i)=>{if(!x.added)addCandidate(i)});
+ if($("addOtherItem"))$("addOtherItem").onclick=()=>{const b=$("otherItemBox");b.innerHTML=`<div class="bill-add-box"><div class="row"><div class="field"><label>Missing item</label><input id="missingItem" placeholder="Item name"></div><div class="field"><label>Price (MVR)</label><input id="missingPrice" type="number" step="0.01" placeholder="0.00"></div></div><div class="btnrow"><button class="primary" id="saveMissing">Add to bill</button><button class="ghost" id="cancelMissing">Cancel</button></div></div>`;$("cancelMissing").onclick=()=>b.innerHTML="";$("saveMissing").onclick=()=>{const name=$("missingItem").value.trim(),price=parseFloat($("missingPrice").value);if(!name||!Number.isFinite(price))return alert("Enter an item name and price.");const x={item:name,shop:currentBill?.shop||$("shop").value.trim(),date:currentBill?.date||today(),price,added:alreadyExists({item:name,shop:currentBill?.shop||$("shop").value.trim(),date:currentBill?.date||today(),price})};scanEntries.push(x);if(!x.added){entries.push({item:name,category:$('category').value.trim(),shop:x.shop,price,date:x.date,receiptId:currentBill?.receiptId||null});x.added=true;save();}b.innerHTML="";renderBillSummary();render();renderScan();syncCurrentReceiptRecord();}};
 }
 function addCandidate(i){
  const x=scanEntries[i];
  if(!x||x.added)return;
  if(alreadyExists(x)){x.added=true;renderScan();return;}
- entries.push({item:x.item,category:$("category").value.trim(),shop:x.shop,price:x.price,date:x.date});
- x.added=true;save();render();renderScan();
+ entries.push({item:x.item,category:$("category").value.trim(),shop:x.shop,price:x.price,date:x.date,receiptId:currentBill?.receiptId||null});
+ x.added=true;save();render();renderScan();syncCurrentReceiptRecord();
 }
 function editCandidate(i){
  const x=scanEntries[i];currentEdit=-1;$("mItem").value=x.item;$("mCat").value=$("category").value;$("mShop").value=x.shop;$("mPrice").value=x.price;$("mDate").value=x.date;$("modal").classList.add("open");
- $("saveEdit").onclick=()=>{x.item=$("mItem").value.trim();x.shop=$("mShop").value.trim();x.price=parseFloat($("mPrice").value);x.date=$("mDate").value||today();x.category=$("mCat").value.trim();x.added=alreadyExists(x);if(!x.added){entries.push({item:x.item,category:x.category,shop:x.shop,price:x.price,date:x.date});x.added=true;save();render()}$("modal").classList.remove("open");renderScan()}
+ $("saveEdit").onclick=()=>{x.item=$("mItem").value.trim();x.shop=$("mShop").value.trim();x.price=parseFloat($("mPrice").value);x.date=$("mDate").value||today();x.category=$("mCat").value.trim();x.added=alreadyExists(x);if(!x.added){entries.push({item:x.item,category:x.category,shop:x.shop,price:x.price,date:x.date,receiptId:currentBill?.receiptId||null});x.added=true;save();render()}$("modal").classList.remove("open");renderScan();syncCurrentReceiptRecord()}
 }
 
 async function loadOCR(){
@@ -509,11 +519,13 @@ function preprocess(file){
 }
 function openReceiptDb(){return new Promise((resolve,reject)=>{if(receiptDb)return resolve(receiptDb);const r=indexedDB.open(RECEIPT_DB,1);r.onupgradeneeded=()=>{if(!r.result.objectStoreNames.contains("receipts"))r.result.createObjectStore("receipts",{keyPath:"id"})};r.onsuccess=()=>{receiptDb=r.result;resolve(receiptDb)};r.onerror=()=>reject(r.error)})}
 function fileDataUrl(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(file)})}
-async function saveReceiptRecord(file,bill){try{const db=await openReceiptDb(),data=await fileDataUrl(file),id=Date.now()+"-"+Math.random().toString(36).slice(2);const rec={id,image:data,shop:bill?.shop||"Unprocessed receipt",date:bill?.date||today(),total:bill?.total??null,items:bill?.items?.length||0,createdAt:new Date().toISOString()};await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite");tx.objectStore("receipts").put(rec);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});return rec}catch(e){console.warn("Receipt storage failed",e);return null}}
-async function updateReceiptRecord(id,bill){try{const db=await openReceiptDb();await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite"),store=tx.objectStore("receipts"),req=store.get(id);req.onsuccess=()=>{const r=req.result;if(!r){res();return}r.shop=bill?.shop||r.shop;r.date=bill?.date||r.date;r.total=bill?.total??r.total;r.items=bill?.items?.length||0;r.entryKeys=(bill?.items||[]).map(duplicateKey);store.put(r)};req.onerror=()=>rej(req.error);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});await loadReceipts()}catch(e){console.warn("Receipt metadata update failed",e)}}
+async function saveReceiptRecord(file,bill){try{const db=await openReceiptDb(),data=await fileDataUrl(file),id=Date.now()+"-"+Math.random().toString(36).slice(2);const rec={id,image:data,shop:bill?.shop||"Unprocessed receipt",date:bill?.date||today(),subtotal:bill?.subtotal??null,tax:bill?.tax??null,discount:bill?.discount??null,pointsUsed:bill?.pointsUsed??null,total:bill?.total??null,items:bill?.items?.length||0,entryKeys:(bill?.items||[]).map(duplicateKey),createdAt:new Date().toISOString()};await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite");tx.objectStore("receipts").put(rec);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});return rec}catch(e){console.warn("Receipt storage failed",e);return null}}
+async function updateReceiptRecord(id,bill){try{const db=await openReceiptDb();await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite"),store=tx.objectStore("receipts"),req=store.get(id);req.onsuccess=()=>{const r=req.result;if(!r){res();return}r.shop=bill?.shop||r.shop;r.date=bill?.date||r.date;r.subtotal=bill?.subtotal??r.subtotal??null;r.tax=bill?.tax??r.tax??null;r.discount=bill?.discount??r.discount??null;r.pointsUsed=bill?.pointsUsed??r.pointsUsed??null;r.total=bill?.total??r.total??null;r.items=bill?.items?.length||0;r.entryKeys=(bill?.items||[]).map(duplicateKey);store.put(r)};req.onerror=()=>rej(req.error);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});await loadReceipts()}catch(e){console.warn("Receipt metadata update failed",e)}}
+async function deleteReceiptRecordOnly(id){const db=await openReceiptDb();await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite");tx.objectStore("receipts").delete(id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});await loadReceipts()}
+async function syncCurrentReceiptRecord(){if(!currentBill?.receiptId)return;const billItems=entries.filter(e=>e.receiptId===currentBill.receiptId);await updateReceiptRecord(currentBill.receiptId,{...currentBill,items:billItems})}
 async function loadReceipts(){try{const db=await openReceiptDb();savedReceipts=await new Promise((res,rej)=>{const tx=db.transaction("receipts","readonly"),req=tx.objectStore("receipts").getAll();req.onsuccess=()=>res(req.result||[]);req.onerror=()=>rej(req.error)});savedReceipts.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));renderReceipts();updateTabCounts()}catch(e){savedReceipts=[];renderReceipts();updateTabCounts()}}
-async function deleteReceipt(id){if(!confirm("Delete this saved receipt?"))return;const db=await openReceiptDb();await new Promise((res,rej)=>{const tx=db.transaction("receipts","readwrite");tx.objectStore("receipts").delete(id);tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});await loadReceipts()}
-function renderReceipts(){const el=$("receipts");if(!el)return;if(!savedReceipts.length){el.innerHTML='<div class="empty">No uploaded receipts saved yet.</div>';return}el.innerHTML='<h3>Uploaded receipts</h3>'+savedReceipts.map(r=>`<div class="receipt-card"><img class="receipt-thumb" src="${r.image}" alt="Receipt"><div class="receipt-meta"><b>${esc(r.shop||"Receipt")}</b><div class="muted">${esc(r.date||"")}</div><div class="muted">${r.items||0} scanned item(s)${r.total!=null?` · MVR ${Number(r.total).toFixed(2)}`:""}</div><div class="receipt-actions"><button class="ghost small" onclick="viewReceipt('${r.id}')">View receipt</button><button class="danger small" onclick="deleteReceipt('${r.id}')">Delete</button></div></div></div>`).join("")}
+async function deleteReceipt(id){if(!confirm("Delete this receipt and all of its matching price entries?"))return;const r=(savedReceipts||[]).find(x=>x.id===id);const keys=Array.isArray(r?.entryKeys)?r.entryKeys:[];if(keys.length){const keySet=new Set(keys);entries=entries.filter(e=>e.receiptId!==id&&!keySet.has(duplicateKey(e)))}else{entries=entries.filter(e=>e.receiptId!==id)}save();await deleteReceiptRecordOnly(id);render()}
+function renderReceipts(){const el=$("receipts");if(!el)return;if(!savedReceipts.length){el.innerHTML='<div class="empty">No uploaded receipts saved yet.</div>';return}el.innerHTML='<h3>Bill history</h3><div class="history-note">Saved receipts are your bill history. Deleting a bill also removes its matching price-log entries.</div>'+savedReceipts.map(r=>`<div class="receipt-card"><img class="receipt-thumb" src="${r.image}" alt="Receipt"><div class="receipt-meta"><b>${esc(r.shop||"Receipt")}</b><div class="muted">${esc(r.date||"")}</div>${r.subtotal!=null?`<div class="muted">Subtotal MVR ${Number(r.subtotal).toFixed(2)}${r.tax!=null?` · GST MVR ${Number(r.tax).toFixed(2)}`:""}</div>`:""}<div class="muted">${r.items||0} scanned item(s)${r.total!=null?` · Total MVR ${Number(r.total).toFixed(2)}`:""}</div><div class="receipt-actions"><button class="ghost small" onclick="viewReceipt('${r.id}')">View receipt</button><button class="danger small" onclick="deleteReceipt('${r.id}')">Delete whole bill</button></div></div></div>`).join("")}
 function viewReceipt(id){const r=savedReceipts.find(x=>x.id===id);if(!r)return;const w=window.open();if(w){w.document.write(`<title>${esc(r.shop||"Receipt")}</title><body style="margin:0;background:#111;display:flex;justify-content:center"><img src="${r.image}" style="max-width:100%;height:auto;object-fit:contain"></body>`);w.document.close()}}
 async function handleFile(file){
  if(!file)return;
@@ -537,18 +549,28 @@ async function handleFile(file){
     currentBill=parseReceipt(r.data.text||"");
   }
   scanEntries=currentBill.items;
-  if(saved) await updateReceiptRecord(saved.id,currentBill);
+  const dup=scanEntries.length&&scanEntries.every(x=>x.added);
+  if(dup){
+    $("status").textContent="Duplicate/previously scanned bill detected. No data was added or updated.";
+    if(saved){await deleteReceiptRecordOnly(saved.id);saved=null;}
+    $("billInfo").innerHTML=`<div class="notice">This bill is already recorded. It was not added to your bill history again.</div>`;
+    renderScan();
+    return;
+  }
+  if(saved){currentBill.receiptId=saved.id;await updateReceiptRecord(saved.id,currentBill);}
   $("billInfo").innerHTML=`<div class="billbox">
   <div class="field" style="margin-bottom:10px">
     <label>Shop name — amend if needed</label>
     <input id="billShopEdit" value="${esc(currentBill.shop)}" placeholder="Enter shop name">
   </div>
-  <div class="billrow"><span>Date</span><b>${esc(currentBill.date)}</b></div>${currentBill.subtotal!=null?`<div class="billrow"><span>Subtotal</span><b>MVR ${currentBill.subtotal.toFixed(2)}</b></div>`:""}${currentBill.tax!=null?`<div class="billrow"><span>GST / Tax</span><b>MVR ${currentBill.tax.toFixed(2)}</b></div>`:""}
-  ${currentBill.discount!=null?`<div class="billrow"><span>Discount</span><b>− MVR ${currentBill.discount.toFixed(2)}</b></div>`:""}
-  ${currentBill.pointsUsed!=null?`<div class="billrow"><span>Customer points used</span><b>MVR ${currentBill.pointsUsed.toFixed(2)}</b></div>`:""}
-  ${currentBill.total!=null?`<div class="billrow total"><span>Total paid</span><b>MVR ${currentBill.total.toFixed(2)}</b></div>`:""}</div>`;
-  const dup=scanEntries.length&&scanEntries.every(x=>x.added);
-  $("status").textContent=dup?"Duplicate/previously scanned bill detected. No new items found.":`Read ${scanEntries.length} item(s). Review and add missing items.`;
+  <div class="billrow"><span>Date</span><b>${esc(currentBill.date)}</b></div>
+  <div id="billSummary"></div>
+  ${currentBill.discount!=null?`<div class="billrow"><span>Discount</span><b>− MVR ${Number(currentBill.discount).toFixed(2)}</b></div>`:""}
+  ${currentBill.pointsUsed!=null?`<div class="billrow"><span>Customer points used</span><b>MVR ${Number(currentBill.pointsUsed).toFixed(2)}</b></div>`:""}
+  <div class="history-note">Edit the bill totals if a scanned value needs correction. Changes are saved with this bill.</div>
+  </div>`;
+  renderBillSummary();
+  $("status").textContent=`Read ${scanEntries.length} item(s). Review and add missing items.`;
   renderScan();
   const shopEdit=$("billShopEdit");
   if(shopEdit){
@@ -556,6 +578,7 @@ async function handleFile(file){
       currentBill.shop=shopEdit.value.trim();
       scanEntries.forEach(x=>x.shop=currentBill.shop);
       renderScan();
+      syncCurrentReceiptRecord();
     });
   }
  }catch(e){console.error(e);$("status").textContent="Receipt could not be read. You can still use Add entry or try another photo."}

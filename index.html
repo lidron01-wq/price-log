@@ -74,6 +74,12 @@ input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px
 .pv-link{background:none;border:0;color:var(--teal);text-decoration:underline;padding:0 0 0 4px;font-size:12px;font-weight:600;display:none}
 #pvHint .pv-link{display:inline}
 .pv input.ov{border-color:var(--coral)}
+.pv-mode{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.pv-mode button{padding:8px 4px;font-size:12px;background:var(--paper);color:var(--dim);border:1px solid var(--line)}
+.pv-mode button.on{background:var(--teal);color:var(--paper);border-color:var(--teal)}
+.pv-gst{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ink);font-weight:600;white-space:nowrap}
+.pv-gst input{width:18px;height:18px;padding:0;margin:0;accent-color:var(--teal)}
+.pv-meta{gap:8px}.pv-unit{flex:1;text-align:center}
 .pv-peek{position:absolute;inset:0;background:#000d;display:flex;align-items:center;justify-content:center;z-index:5;overflow:auto;padding:12px}
 .pv-peek img{max-width:100%;max-height:100%;object-fit:contain;border-radius:8px}
 </style>
@@ -558,18 +564,40 @@ const fmt=n=>(Number(n)||0).toFixed(2);
 const num=v=>{const n=parseFloat(v);return Number.isFinite(n)?n:0};
 let submitting=false;
 
-function draftTotals(){
- const subtotal=scanEntries.reduce((s,x)=>s+(Number(x.lineTotal)||0),0);
- const tax=scanEntries.reduce((s,x)=>s+(Number(x.tax)||0),0);
- const discount=Number(currentBill?.discount)||0;
- return {subtotal,tax,discount,total:subtotal+tax-discount};
+const GST_RATE=0.08,GST_MODE_KEY="price-log-gst-mode-v1";
+const round2=n=>Math.round((Number(n)||0)*100)/100;
+const gstFactor=()=>currentBill?.gstMode==="excl"?GST_RATE:GST_RATE/(1+GST_RATE);
+function gstModes(){try{return JSON.parse(localStorage.getItem(GST_MODE_KEY)||"{}")||{}}catch(e){return {}}}
+function defaultGstMode(shop){
+ const k=String(shop||"").trim().toLowerCase();
+ const saved=gstModes()[k];if(saved==="incl"||saved==="excl")return saved;
+ return /day\s*night/i.test(k)?"excl":"incl";
 }
-// Effective totals = typed override if the user edited the field, otherwise auto-calculated from the item list.
+function rememberGstMode(shop,mode){try{const m=gstModes();m[String(shop||"").trim().toLowerCase()]=mode;localStorage.setItem(GST_MODE_KEY,JSON.stringify(m))}catch(e){}}
+// Per-line GST: 8% of the line (included in the price, or added on top), unless the line is untaxed or the tax was typed by hand.
+function syncLineTaxes(force){
+ const f=gstFactor();
+ scanEntries.forEach((x,i)=>{
+  if(x.taxManual)return;
+  x.tax=x.taxable!==false?round2((Number(x.lineTotal)||0)*f):0;
+  const inp=document.querySelector(`#pvList .pv-line[data-i="${i}"] [data-f="tax"]`);
+  if(inp&&(force||document.activeElement!==inp))inp.value=fmt(x.tax);
+ });
+}
+// Bill GST is worked out on the combined taxable amount (how the printed bills do it), plus any hand-typed line taxes.
+function draftTotals(){
+ let sum=0,base=0,manual=0;
+ scanEntries.forEach(x=>{const t=Number(x.lineTotal)||0;sum+=t;if(x.taxManual)manual+=Number(x.tax)||0;else if(x.taxable!==false)base+=t});
+ const tax=round2(base*gstFactor())+manual;
+ const discount=Number(currentBill?.discount)||0;
+ const incl=currentBill?.gstMode!=="excl";
+ return {sum,tax,discount,subtotal:incl?sum-tax:sum,total:incl?sum-discount:sum+tax-discount};
+}
 function effTotals(){
- const c=draftTotals(),ov=currentBill?.ov||{};
- const sub=ov.sub!=null?ov.sub:c.subtotal;
+ const c=draftTotals(),ov=currentBill?.ov||{},incl=currentBill?.gstMode!=="excl";
  const tax=ov.tax!=null?ov.tax:c.tax;
- const total=ov.total!=null?ov.total:sub+tax-c.discount;
+ const sub=ov.sub!=null?ov.sub:(incl?c.sum-tax:c.sum);
+ const total=ov.total!=null?ov.total:(incl?c.sum-c.discount:sub+tax-c.discount);
  return {sub,tax,discount:c.discount,total};
 }
 function unitText(x){const q=Number(x.qty)||1;return `@ MVR ${fmt((Number(x.lineTotal)||0)/q)} each`}
@@ -580,13 +608,14 @@ function pvRow(x,i){
   <div class="pv-grid">
    <div class="pv-f"><label>Qty</label><div class="pv-step"><button data-step="-1" type="button">−</button><input data-f="qty" type="number" inputmode="decimal" step="any" min="0" value="${Number(x.qty)||1}"><button data-step="1" type="button">+</button></div></div>
    <div class="pv-f"><label>Total (MVR)</label><input data-f="total" type="number" inputmode="decimal" step="0.01" min="0" value="${fmt(x.lineTotal)}"></div>
-   <div class="pv-f"><label>Tax</label><input data-f="tax" type="number" inputmode="decimal" step="0.01" min="0" value="${fmt(x.tax)}"></div>
+   <div class="pv-f"><label>Tax</label><input data-f="tax" type="number" inputmode="decimal" step="0.01" min="0" value="${fmt(x.tax)}" placeholder="auto"></div>
   </div>
-  <div class="pv-meta"><span class="pv-unit">${unitText(x)}</span><span class="pv-badge ${rec?'rec':'new'}">${rec?'Already recorded':'New'}</span></div>
+  <div class="pv-meta"><label class="pv-gst"><input type="checkbox" data-f="taxable" ${x.taxable!==false?'checked':''}> GST 8%</label><span class="pv-unit">${unitText(x)}</span><span class="pv-badge ${rec?'rec':'new'}">${rec?'Already recorded':'New'}</span></div>
  </div>`;
 }
 function pvRenderList(){
  const el=$('pvList');if(!el)return;
+ syncLineTaxes();
  el.innerHTML=scanEntries.length?scanEntries.map(pvRow).join(''):'<div class="pv-empty">No items yet.<br>Add the first item above.</div>';
  refreshTotals();
 }
@@ -600,10 +629,12 @@ function refreshTotals(){
  $('pvTotal').classList.toggle('ov',ov.total!=null);
  $('pvReset').style.display=(ov.sub!=null||ov.tax!=null||ov.total!=null)?'inline':'none';
  $('pvCount').textContent=`${scanEntries.length} item${scanEntries.length===1?'':'s'}`;
- const p=currentBill.printed?.total;
- $('pvHint').innerHTML=(p&&Math.abs(p-t.total)>0.009)
-  ?`Scanned bill total was <b>MVR ${fmt(p)}</b> (differs by ${fmt(Math.abs(p-t.total))}) <button class="pv-link" id="pvUsePrinted" type="button">Use scanned total</button>`
-  :'Totals update automatically from the item list.';
+ const pr=currentBill.printed||{},incl=currentBill.gstMode!=="excl";
+ document.querySelectorAll('#pv [data-mode]').forEach(btn=>btn.classList.toggle('on',btn.dataset.mode===currentBill.gstMode));
+ const diff=(pr.total!=null&&Math.abs(pr.total-t.total)>0.009)||(pr.tax!=null&&Math.abs(pr.tax-t.tax)>0.009);
+ $('pvHint').innerHTML=diff
+  ?`Scanned bill: ${pr.subtotal!=null?'Sub '+fmt(pr.subtotal)+' · ':''}GST ${pr.tax!=null?fmt(pr.tax):'—'} · Total ${pr.total!=null?fmt(pr.total):'—'} <button class="pv-link" id="pvUsePrinted" type="button">Use scanned</button>`
+  :`GST fixed at 8% · ${incl?'prices already include GST':'GST is added on top of prices'}`;
 }
 function closeDraft(hidePreview){
  $('pv').classList.remove('open');document.body.style.overflow='';
@@ -618,6 +649,8 @@ function renderBillEditor(){
   const pr=v=>v!=null&&Number.isFinite(Number(v))&&Number(v)>0?Number(v):null;
   b.printed={subtotal:pr(b.subtotal),tax:pr(b.tax),total:pr(b.total)};
   b.ov={sub:null,tax:null,total:null};
+  b.gstMode=defaultGstMode(b.shop);
+  scanEntries.forEach(x=>{x.taxable=(x.gst!=null&&Number.isFinite(Number(x.gst)))?Number(x.gst)>0:true;x.taxManual=false});
  }
  b.discount=Number(b.discount)||0;
  const names=[...new Set(entries.map(e=>String(e.item||'').trim()).filter(Boolean))].sort().slice(0,400);
@@ -632,13 +665,14 @@ function renderBillEditor(){
    <div class="pv-cgrid">
     <input id="pvNewQty" type="number" inputmode="decimal" step="any" min="0" value="1" aria-label="Qty">
     <input id="pvNewTotal" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Total" aria-label="Total">
-    <input id="pvNewTax" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Tax" aria-label="Tax">
+    <input id="pvNewTax" type="number" inputmode="decimal" step="0.01" min="0" placeholder="GST" aria-label="GST (blank = auto 8%)">
     <button class="primary" id="pvAdd" type="button">＋ Add</button>
    </div>
   </div>
   <datalist id="pvNames">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
   <div class="pv-list" id="pvList"></div>
   <footer class="pv-foot">
+   <div class="pv-mode"><button type="button" data-mode="incl">Prices include GST</button><button type="button" data-mode="excl">GST added on top</button></div>
    <div class="pv-hint" id="pvHint"></div>
    <div class="pv-tgrid">
     <div class="pv-f"><label>Subtotal</label><input id="pvSub" type="number" inputmode="decimal" step="0.01"></div>
@@ -667,14 +701,19 @@ function renderBillEditor(){
   if(f==='name')x.item=e.target.value;
   if(f==='qty')x.qty=Math.max(.001,num(e.target.value)||1);
   if(f==='total')x.lineTotal=Math.max(0,num(e.target.value));
-  if(f==='tax')x.tax=Math.max(0,num(e.target.value));
+  if(f==='tax'){if(e.target.value.trim()===''){x.taxManual=false}else{x.taxManual=true;x.tax=Math.max(0,num(e.target.value))}}
+  if(f==='total')syncLineTaxes();
   x.price=(Number(x.lineTotal)||0)/(Number(x.qty)||1);
   row.querySelector('.pv-unit').textContent=unitText(x);
   refreshTotals();
  });
  list.addEventListener('change',e=>{
-  const f=e.target.dataset.f;
-  if(f==='total'||f==='tax')e.target.value=fmt(e.target.value);
+  const f=e.target.dataset.f,row=e.target.closest('.pv-line'),x=row&&scanEntries[+row.dataset.i];
+  if(!f||!x)return;
+  if(f==='taxable'){x.taxable=e.target.checked;x.taxManual=false;syncLineTaxes(true);refreshTotals();return}
+  if(f==='total'){e.target.value=fmt(e.target.value);syncLineTaxes(true)}
+  if(f==='tax'){if(x.taxManual)e.target.value=fmt(e.target.value);else syncLineTaxes(true)}
+  refreshTotals();
  });
  list.addEventListener('click',e=>{
   const row=e.target.closest('.pv-line');if(!row)return;
@@ -694,8 +733,8 @@ function renderBillEditor(){
   const name=$('pvNewName').value.trim(),total=parseFloat($('pvNewTotal').value);
   if(!name){$('pvNewName').focus();return}
   if(!Number.isFinite(total)){$('pvNewTotal').focus();return}
-  const qty=Math.max(.001,num($('pvNewQty').value)||1),tax=Math.max(0,num($('pvNewTax').value));
-  scanEntries.push({item:name,shop:b.shop||'',date:b.date||today(),price:total/qty,qty,lineTotal:total,tax,added:false,originalAdded:false,existingIndex:-1});
+  const qty=Math.max(.001,num($('pvNewQty').value)||1),hasTax=$('pvNewTax').value.trim()!=='',tax=Math.max(0,num($('pvNewTax').value));
+  scanEntries.push({item:name,shop:b.shop||'',date:b.date||today(),price:total/qty,qty,lineTotal:total,tax,taxable:true,taxManual:hasTax,added:false,originalAdded:false,existingIndex:-1});
   pvRenderList();
   $('pvNewName').value='';$('pvNewQty').value='1';$('pvNewTotal').value='';$('pvNewTax').value='';
   list.scrollTop=list.scrollHeight;$('pvNewName').focus();
@@ -713,7 +752,8 @@ function renderBillEditor(){
  bind('pvSub','sub');bind('pvTax','tax');bind('pvTotal','total');bind('pvDisc','discount');
  $('pv').querySelector('.pv-foot').addEventListener('focusout',()=>setTimeout(refreshTotals,0));
  $('pvReset').onclick=()=>{b.ov={sub:null,tax:null,total:null};refreshTotals()};
- $('pvHint').addEventListener('click',e=>{if(e.target.id==='pvUsePrinted'){b.ov.total=b.printed.total;refreshTotals()}});
+ $('pvHint').addEventListener('click',e=>{if(e.target.id==='pvUsePrinted'){const p=b.printed||{};b.ov={sub:p.subtotal,tax:p.tax,total:p.total};b.ov.sub=b.ov.sub??null;b.ov.tax=b.ov.tax??null;b.ov.total=b.ov.total??null;refreshTotals()}});
+ $('pv').querySelectorAll('[data-mode]').forEach(btn=>btn.onclick=()=>{b.gstMode=btn.dataset.mode;b.ov={sub:null,tax:null,total:null};syncLineTaxes(true);refreshTotals()});
  $('pvSubmit').onclick=submitCurrentBill;
 }
 function renderScan(){
@@ -755,6 +795,7 @@ async function submitCurrentBill(){
   changes.forEach(c=>{entries[c.index]={...c.value,receiptId:saved.id}});
   newEntries.forEach(e=>entries.push({...e,receiptId:saved.id}));
   save();
+  rememberGstMode(shop,currentBill.gstMode);
   await loadReceipts();
   render();
   closeDraft(false);

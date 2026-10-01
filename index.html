@@ -104,7 +104,7 @@ input,select,textarea{font:16px -apple-system,sans-serif;padding:10px;border:1px
 <div id="billInfo"></div><div id="candidates" class="candidates"></div>
 </div>
 
-<div class="tabs"><button class="tab active" data-tab="dash">Dashboard <span class="count" id="tabDashCount">0</span></button><button class="tab" data-tab="items">Items <span class="count" id="tabItemsCount">0</span></button><button class="tab" data-tab="shops">Shops <span class="count" id="tabShopsCount">0</span></button><button class="tab" data-tab="spending">Spending <span class="count" id="tabSpendingCount">0</span></button><button class="tab" data-tab="shopping">Shopping <span class="count" id="tabShoppingCount">0</span></button><button class="tab" data-tab="receipts">Receipts <span class="count" id="tabReceiptsCount">0</span></button></div>
+<div class="tabs"><button class="tab active" data-tab="dash">Dashboard <span class="count" id="tabDashCount">0</span></button><button class="tab" data-tab="items">Items <span class="count" id="tabItemsCount">0</span></button><button class="tab" data-tab="shops">Shops <span class="count" id="tabShopsCount">0</span></button><button class="tab" data-tab="spending">Spending <span class="count" id="tabSpendingCount">0</span></button><button class="tab" data-tab="shopping">Shopping <span class="count" id="tabShoppingCount">0</span></button><button class="tab" data-tab="receipts">Bills <span class="count" id="tabReceiptsCount">0</span></button></div>
 <div class="tab-content"><section id="dash"></section><section id="items" style="display:none"></section><section id="shops" style="display:none"></section><section id="spending" style="display:none"></section><section id="shopping" style="display:none"></section><section id="receipts" style="display:none"></section></div>
 </main>
 
@@ -215,25 +215,34 @@ function importShoppingFromUrl(){
 }
 
 function renderItems(){
- if(!entries.length){$("items").innerHTML='<div class="empty">No entries yet.</div>';return}
- const cats={};
+ const host=$("items");
+ if(!entries.length){host.innerHTML='<div class="empty">No entries yet.</div>';return}
+ if(!$("itemsFilter")){
+  host.innerHTML='<input id="itemsFilter" placeholder="Filter items, shops or categories…" autocomplete="off" style="margin-bottom:12px"><div class="muted" id="itemsSummary" style="font-size:12px;color:var(--dim);margin:0 2px 10px"></div><div id="itemsList"></div>';
+  $("itemsFilter").addEventListener("input",renderItems);
+ }
+ const q=$("itemsFilter").value.trim().toLowerCase();
+ // One flat list: every item from every category, grouped only by item name.
+ const groups={};
  entries.forEach((e,i)=>{
-   const item=String(e.item??"").trim()||"Unnamed item";
-   const c=String(e.category||"Uncategorized");
-   const k=item.toLowerCase();
-   cats[c]??={};
-   cats[c][k]??=[];
-   cats[c][k].push({...e,item,_index:i});
+  const item=String(e.item??"").trim()||"Unnamed item";
+  const k=item.toLowerCase();
+  (groups[k]??={label:item,rows:[]}).rows.push({...e,item,_index:i});
  });
- $("items").innerHTML=Object.keys(cats).sort().map(c=>{
-  return `<div class="category-head">${esc(c)}</div>`+Object.keys(cats[c]).sort().map(k=>{
-   const rows=cats[c][k].sort((a,b)=>Number(a.price)-Number(b.price)),label=rows[0].item,min=Number(rows[0].price);
-   return `<div class="item-group"><div class="item-head">${esc(label)}</div>${rows.map(r=>{
-     const price=Number(r.price); const shown=Number.isFinite(price)?price:0;
-     return `<div class="entry"><div><b>${esc(r.shop||"Unknown shop")}</b> <span class="date">${esc(r.date||"")}</span></div><div class="entry-actions"><span class="price" style="color:${shown===min?'var(--good)':'inherit'}">MVR ${shown.toFixed(2)}</span><button class="ghost" onclick="openEdit(${r._index})">Edit</button><button class="danger" onclick="delEntry(${r._index})">×</button></div></div>`;
-   }).join("")}</div>`
-  }).join("")
- }).join("");
+ let list=Object.values(groups).sort((a,b)=>a.label.localeCompare(b.label,undefined,{sensitivity:"base"}));
+ if(q)list=list.filter(g=>g.label.toLowerCase().includes(q)||g.rows.some(r=>String(r.shop||"").toLowerCase().includes(q)||String(r.category||"").toLowerCase().includes(q)));
+ $("itemsSummary").textContent=`${list.length} item${list.length===1?"":"s"}${q?" matching":" in total"} · ${entries.length} price entr${entries.length===1?"y":"ies"}`;
+ const open=new Set([...document.querySelectorAll("#itemsList details[open]")].map(d=>d.dataset.k));
+ $("itemsList").innerHTML=list.map(g=>{
+  const rows=g.rows.slice().sort((a,b)=>Number(a.price)-Number(b.price));
+  const min=Number(rows[0].price)||0,shops=new Set(rows.map(r=>String(r.shop||"").toLowerCase())).size;
+  const cats=[...new Set(rows.map(r=>String(r.category||"").trim()).filter(Boolean))];
+  const k=g.label.toLowerCase();
+  return `<details class="item-group" data-k="${esc(k)}"${open.has(k)?" open":""}><summary class="item-head" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;list-style:none"><div style="min-width:0"><div>${esc(g.label)}</div><div class="date" style="font-weight:500">${cats.length?esc(cats.join(", "))+" · ":""}${shops} shop${shops===1?"":"s"}</div></div><div class="price" style="color:var(--good);white-space:nowrap">from MVR ${min.toFixed(2)}</div></summary>${rows.map(r=>{
+   const price=Number(r.price),shown=Number.isFinite(price)?price:0;
+   return `<div class="entry"><div><b>${esc(r.shop||"Unknown shop")}</b> <span class="date">${esc(r.date||"")}</span></div><div class="entry-actions"><span class="price" style="color:${shown===min?"var(--good)":"inherit"}">MVR ${shown.toFixed(2)}</span><button class="ghost" onclick="openEdit(${r._index})">Edit</button><button class="danger" onclick="delEntry(${r._index})">×</button></div></div>`;
+  }).join("")}</details>`;
+ }).join("")||'<div class="empty">No items match.</div>';
 }
 function delEntry(i){
  const idx=Number(i);
@@ -529,9 +538,10 @@ function parseReceipt(text){
 }
 function dedupe(a){const seen=new Set();return a.filter(x=>{const k=duplicateKey(x);if(seen.has(k))return false;seen.add(k);return true})}
 
+function isLinked(e){return !!e.receiptId&&(savedReceipts||[]).some(r=>r.id===e.receiptId)}
 function draftExistingIndex(x){
  const key=duplicateKey(x);
- return entries.findIndex(e=>duplicateKey(e)===key);
+ return entries.findIndex(e=>isLinked(e)&&duplicateKey(e)===key);
 }
 function makeDraftItems(items){
  return (items||[]).map(x=>{
@@ -730,8 +740,11 @@ async function submitCurrentBill(){
    const updated={...old,item:item.item,shop:item.shop,date:item.date,price:item.price,qty:item.qty,tax:item.tax,category:old.category||category};
    changes.push({index:x.existingIndex,value:updated});changedKeys.push(duplicateKey(updated));return;
   }
-  const exact=entries.some(e=>duplicateKey(e)===duplicateKey(item))||newEntries.some(e=>duplicateKey(e)===duplicateKey(item));
-  if(!exact){newEntries.push({item:item.item,category,shop:item.shop,price:item.price,date:item.date,qty:item.qty,tax:item.tax});changedKeys.push(duplicateKey(item));}
+  const k=duplicateKey(item);
+  if(entries.some(e=>isLinked(e)&&duplicateKey(e)===k)||newEntries.some(e=>duplicateKey(e)===k)||changes.some(c=>duplicateKey(c.value)===k))return;
+  const orphan=entries.findIndex((e,ix)=>!isLinked(e)&&duplicateKey(e)===k&&!changes.some(c=>c.index===ix));
+  if(orphan>=0){changes.push({index:orphan,value:{...entries[orphan],qty:item.qty,tax:item.tax,category:entries[orphan].category||category}});changedKeys.push(k);return;}
+  newEntries.push({item:item.item,category,shop:item.shop,price:item.price,date:item.date,qty:item.qty,tax:item.tax});changedKeys.push(k);
  });
  if(!changes.length&&!newEntries.length){alert('This bill is already recorded. Nothing was changed.');return;}
  bill.items=valid;bill.entryKeys=changedKeys;
@@ -773,7 +786,27 @@ async function deleteReceiptRecordOnly(id){const db=await openReceiptDb();await 
 async function syncCurrentReceiptRecord(){if(!currentBill?.receiptId)return;const billItems=entries.filter(e=>e.receiptId===currentBill.receiptId);await updateReceiptRecord(currentBill.receiptId,{...currentBill,items:billItems})}
 async function loadReceipts(){try{const db=await openReceiptDb();savedReceipts=await new Promise((res,rej)=>{const tx=db.transaction("receipts","readonly"),req=tx.objectStore("receipts").getAll();req.onsuccess=()=>res(req.result||[]);req.onerror=()=>rej(req.error)});savedReceipts.sort((a,b)=>String(b.createdAt).localeCompare(String(a.createdAt)));renderReceipts();updateTabCounts()}catch(e){savedReceipts=[];renderReceipts();updateTabCounts()}}
 async function deleteReceipt(id){if(!confirm("Delete this receipt and all of its matching price entries?"))return;const r=(savedReceipts||[]).find(x=>x.id===id);const keys=Array.isArray(r?.entryKeys)?r.entryKeys:[];if(keys.length){const keySet=new Set(keys);entries=entries.filter(e=>e.receiptId!==id&&!keySet.has(duplicateKey(e)))}else{entries=entries.filter(e=>e.receiptId!==id)}save();await deleteReceiptRecordOnly(id);render()}
-function renderReceipts(){const el=$("receipts");if(!el)return;if(!savedReceipts.length){el.innerHTML='<div class="empty">No uploaded receipts saved yet.</div>';return}el.innerHTML='<h3>Bill history</h3><div class="history-note">Saved receipts are your bill history. Deleting a bill also removes its matching price-log entries.</div>'+savedReceipts.map(r=>`<div class="receipt-card">${r.image?`<img class="receipt-thumb" src="${r.image}" alt="Receipt">`:''}<div class="receipt-meta"><b>${esc(r.shop||"Receipt")}</b><div class="muted">${esc(r.date||"")}</div>${r.subtotal!=null?`<div class="muted">Subtotal MVR ${Number(r.subtotal).toFixed(2)}${r.tax!=null?` · GST MVR ${Number(r.tax).toFixed(2)}`:""}</div>`:""}<div class="muted">${r.items||0} scanned item(s)${r.total!=null?` · Total MVR ${Number(r.total).toFixed(2)}`:""}</div><div class="receipt-actions"><button class="ghost small" onclick="viewReceipt('${r.id}')">View receipt</button><button class="danger small" onclick="deleteReceipt('${r.id}')">Delete whole bill</button></div></div></div>`).join("")}
+function unlinkedEntries(){return entries.filter(e=>!isLinked(e))}
+function deleteUnlinked(){
+ const o=unlinkedEntries();if(!o.length)return;
+ const shops=[...new Set(o.map(e=>e.shop||"Unknown shop"))].join(", ");
+ if(!confirm(`Delete ${o.length} price record(s) that are not linked to any bill?\n\nShops: ${shops}\n\nThis also removes records you added by hand.`))return;
+ entries=entries.filter(isLinked);save();render();
+}
+function renderReceipts(){
+ const el=$("receipts");if(!el)return;
+ const un=unlinkedEntries();
+ const unBlock=un.length?`<div class="notice" style="margin:0 0 14px"><b>${un.length} price record${un.length===1?"":"s"} not linked to any bill</b><div class="muted" style="margin-top:4px">These are entries added by hand, or left behind from bills that were deleted earlier. They still count in Items, Shops and Spending.</div><div class="btnrow"><button class="danger small" onclick="deleteUnlinked()">Delete unlinked records</button></div></div>`:"";
+ if(!savedReceipts.length){el.innerHTML=`<h3>Bill history</h3>${unBlock}<div class="empty">No bills yet. Scan, upload or enter a bill and submit it to build your bill history.</div>`;return}
+ const sum=savedReceipts.reduce((t,r)=>t+(Number(r.total)||0),0);
+ const money=v=>`MVR ${Number(v).toFixed(2)}`;
+ el.innerHTML=`<h3>Bill history</h3><div class="history-note">${savedReceipts.length} bill${savedReceipts.length===1?"":"s"} · ${money(sum)} in total. Deleting a bill also removes its price entries and updates the totals.</div>${unBlock}`+savedReceipts.map(r=>{
+  const parts=[];
+  if(r.subtotal!=null)parts.push(`Subtotal ${money(r.subtotal)}`);
+  if(r.tax!=null)parts.push(`GST ${money(r.tax)}`);
+  if(r.discount)parts.push(`Discount −${money(r.discount)}`);
+  return `<div class="receipt-card">${r.image?`<img class="receipt-thumb" src="${r.image}" alt="Receipt">`:""}<div class="receipt-meta"><b>${esc(r.shop||"Bill")}</b><div class="muted">${esc(r.date||"")} · ${r.items||0} item${(r.items||0)===1?"":"s"}</div>${parts.length?`<div class="muted">${parts.join(" · ")}</div>`:""}${r.total!=null?`<div style="font-weight:800;margin-top:3px">Total ${money(r.total)}</div>`:""}<div class="receipt-actions">${r.image?`<button class="ghost small" onclick="viewReceipt('${r.id}')">View receipt</button>`:""}<button class="danger small" onclick="deleteReceipt('${r.id}')">Delete whole bill</button></div></div></div>`}).join("");
+}
 function viewReceipt(id){const r=savedReceipts.find(x=>x.id===id);if(!r||!r.image)return;const w=window.open();if(w){w.document.write(`<title>${esc(r.shop||"Receipt")}</title><body style="margin:0;background:#111;display:flex;justify-content:center"><img src="${r.image}" style="max-width:100%;height:auto;object-fit:contain"></body>`);w.document.close()}}
 async function handleFile(file){
  if(!file)return;

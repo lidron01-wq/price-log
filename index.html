@@ -578,10 +578,11 @@ function rememberGstMode(shop,mode){try{const m=gstModes();m[String(shop||"").tr
 function syncLineTaxes(force){
  const f=gstFactor();
  scanEntries.forEach((x,i)=>{
-  if(x.taxManual)return;
-  x.tax=x.taxable!==false?round2((Number(x.lineTotal)||0)*f):0;
-  const inp=document.querySelector(`#pvList .pv-line[data-i="${i}"] [data-f="tax"]`);
-  if(inp&&(force||document.activeElement!==inp))inp.value=fmt(x.tax);
+  if(!x.taxManual)x.tax=x.taxable!==false?round2((Number(x.lineTotal)||0)*f):0;
+  const row=document.querySelector(`#pvList .pv-line[data-i="${i}"]`);if(!row)return;
+  const inp=row.querySelector('[data-f="tax"]');
+  if(!x.taxManual&&inp&&(force||document.activeElement!==inp))inp.value=fmt(x.tax);
+  const u=row.querySelector('.pv-unit');if(u)u.textContent=unitText(x);
  });
 }
 // Bill GST is worked out on the combined taxable amount (how the printed bills do it), plus any hand-typed line taxes.
@@ -600,7 +601,12 @@ function effTotals(){
  const total=ov.total!=null?ov.total:(incl?c.sum-c.discount:sub+tax-c.discount);
  return {sub,tax,discount:c.discount,total};
 }
-function unitText(x){const q=Number(x.qty)||1;return `@ MVR ${fmt((Number(x.lineTotal)||0)/q)} each`}
+// Final price per unit always includes GST: in "GST added on top" mode the line's GST is added; in "prices include GST" mode it is already inside.
+function finalUnit(x){
+ const add=currentBill?.gstMode==="excl"?(Number(x.tax)||0):0;
+ return round2(((Number(x.lineTotal)||0)+add)/(Number(x.qty)||1));
+}
+function unitText(x){return x.taxable===false?`@ MVR ${fmt(finalUnit(x))} each (no GST)`:`@ MVR ${fmt(finalUnit(x))} each incl. GST`}
 function pvRow(x,i){
  const rec=x.originalAdded&&x.existingIndex>=0;
  return `<div class="pv-line" data-i="${i}">
@@ -772,7 +778,7 @@ async function submitCurrentBill(){
  // Build every change in memory first. The saved price log is untouched until the bill is stored successfully.
  const changes=[],newEntries=[],changedKeys=[];
  valid.forEach(x=>{
-  const item={...x,item:String(x.item).trim(),shop,date:bill.date||today(),price:(Number(x.lineTotal)||0)/(Number(x.qty)||1)};
+  const item={...x,item:String(x.item).trim(),shop,date:bill.date||today(),price:finalUnit(x)};
   const unchanged=x.originalAdded&&x.existingIndex>=0&&x.originalKey===duplicateKey(item);
   if(unchanged)return;
   if(x.originalAdded&&x.existingIndex>=0&&entries[x.existingIndex]){
